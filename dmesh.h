@@ -63,6 +63,7 @@ public:
 	void updateMins(ofVec3f& m, ofVec3f c);
 	void updateMaxs(ofVec3f& m, ofVec3f c);
 	void setFacePointers();
+	void applyScaling(ofVec3f);
 
 
 private:

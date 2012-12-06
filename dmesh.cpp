@@ -661,6 +661,15 @@ void Mesh::updateMaxs(ofVec3f& m, ofVec3f c){
 	if(v.z < 0) m.z = c.z;
 }
 
+void Mesh::applyScaling(ofVec3f s){
+	cout << "Applying Scaling of " << s.x << " " << s.y << " " << s.z << endl;
+	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++){
+		ofVec3f p = (*it)->getOriginalPoint(); //make sure to get the original point here, not hte delta changed point
+		p*= s;
+		(*it)->setPoint(p);
+	}
+
+}
 
 
 

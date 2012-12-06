@@ -5,4 +5,8 @@ The code implements Charles Loop's subdivison algorithm based on a control mesh.
 
 TO RUN:
 ./delta --filename (path to .obj file)
-note: if no input file is specified, a default cube is loaded 
+note: if no input file is specified, a default cube is loaded
+
+KEY COMMANDS:
+x: deselects all vertices
+

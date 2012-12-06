@@ -114,6 +114,7 @@ void Scene::exportObj(){
 	 cout << "File Exported!" << endl;
 }
 
+
 void Scene::toggleLimitMeshVisibility(){
 	showLimitMesh = !showLimitMesh;
 }
@@ -153,13 +154,27 @@ void Scene::render_current_mesh(){
 	for(it = faces.begin(); it != faces.end(); it++){
 		
 		ofVec3f c = (*it)->getColor();
-		glColor3f(1., 0., 0.);
 		
 		ofVec3f A = vList[((*it)->getA()->id)-1]->getPoint();
 		ofVec3f B = vList[((*it)->getB()->id)-1]->getPoint();
 		ofVec3f C = vList[((*it)->getC()->id)-1]->getPoint();
 		ofVec3f n = (*it)->getFaceNormal();
+        
+        if(!showLimitMesh){
+			enable_lights();    
+			glColor4f(1., 0., 0., .5);
+	        glBegin(GL_TRIANGLES);
+			glNormal3f(n.x, n.y, n.z);
+			glVertex3f(A.x, A.y, A.z);
+			glNormal3f(n.x, n.y, n.z);
+			glVertex3f(B.x, B.y, B.z);
+			glNormal3f(n.x, n.y, n.z);
+			glVertex3f(C.x, C.y, C.z);
+			glEnd();
+			glDisable(GL_LIGHTING);
+		}
 
+		glColor3f(1., 0., 0.);
 		glBegin(GL_LINE_LOOP);
 		glVertex3f(A.x, A.y, A.z);
 		glVertex3f(B.x, B.y, B.z);

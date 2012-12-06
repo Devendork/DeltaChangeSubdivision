@@ -15,8 +15,9 @@ class MeshManager{
 	
 public:
 	MeshManager();
-	MeshManager(float, int, bool, char*);
+	MeshManager(ofVec3f, int, bool, char*);
 	void updateMeshes(unsigned int );
+	void updateMeshScaling(ofVec3f );
 	void setCurrentMesh(unsigned int i);
 	Mesh* getStateMesh(int );
 	Mesh* getCurrentMesh( );
@@ -33,14 +34,15 @@ public:
  	double getBoxSize();
  	bool doFlipNormal();
  	ofVec3f getMinPoint();
-
-	
+	void setScaleX(float f);
+	void setScaleY(float f);
+	void setScaleZ(float f);
 	
 private:
 	vector<Mesh*> meshes;
 	map<int, map<int, int> > changes; //map: stage_id -> ( map : vertex_id -> delta_id)
 	vector<Delta*> dList; 
-	float scale;		
+	ofVec3f scale;
 	int current;
 	int depth;
 	int limit_depth;

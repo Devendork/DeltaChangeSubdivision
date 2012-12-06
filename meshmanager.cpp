@@ -6,13 +6,13 @@ MeshManager::MeshManager(){
 	cout << "I SHOULDN'T BE CALLED!" << endl;
 }
 
-MeshManager :: MeshManager(float s, int d, bool hf, char* fname){
+MeshManager :: MeshManager(ofVec3f s, int d, bool hf, char* fname){
 	hasfile = hf;
-	scale = s;
 	current = 0;
 	depth = d;
 	limit_depth = d;
 	filename = fname;
+	scale.set(1.,1.,1.);
 
 
 	if(hasfile) meshes.push_back(loadObj());
@@ -21,6 +21,8 @@ MeshManager :: MeshManager(float s, int d, bool hf, char* fname){
 
 	vector<Delta*> changes;
 	for(int i = 1; i < depth; i++) meshes.push_back(new Mesh(i, meshes.back(), changes));
+
+
 
 }
 
@@ -58,9 +60,12 @@ Mesh* MeshManager::loadMesh(){
 		(*it)->setPoint(p);
 	}
 
+
 	return new Mesh(0, vlist, faces);	
 
 }
+
+
 
 Mesh* MeshManager::loadObj(){
 	vector<Vertex*> vlist;
@@ -100,7 +105,7 @@ Mesh* MeshManager::loadObj(){
 				float z = atof((remaining.substr(0, space)).data());
 				remaining = remaining.substr(space+1);
 			
-				vlist.push_back(new Vertex(vlist.size()+1, x*scale, y*1.5*scale, z*scale));
+				vlist.push_back(new Vertex(vlist.size()+1, x*scale.x, y*1.5*scale.y, z*scale.z));
 			}
 			
 			
@@ -141,8 +146,29 @@ Mesh* MeshManager::loadObj(){
 
 
 
+//this updates and recalculates all meshes - called in scaling
+void MeshManager::updateMeshScaling(ofVec3f oldScale){
+
+	for(int i = 0; i < meshes.size(); i++){
+		if(i == 0 ){
+			meshes[0]->applyScaling(scale/oldScale);
+		    meshes[0]->addOffsets(makeDeltaVector(i));
+
+		}else{
+			Mesh* prev = meshes[i-1];
+			prev->resetVariables();
+			meshes[i] = new Mesh(i, prev, makeDeltaVector(i));
+		}
+
+	}
+
+	
+}
+
+
 //does not recalculate any mesh before or at the current stage
 void MeshManager::updateMeshes(unsigned int stage){
+
 	int num_meshes = meshes.size();
 
 	for(int i = 0; i <= stage; i++){
@@ -240,7 +266,6 @@ Delta* MeshManager::getOrMakeDelta(int stage, int id){
 //is at this vertex and stage, and just replace the exisitng delta component with the 
 //new compnent in change. change will always have 2 zero components and 1 non-zero component
 void MeshManager::adjustVertex(int stage, int id, ofVec3f change){
-	cout << "Adjust Vertex " << id << " in stage " << stage << endl;
 
 
 	Delta* d = getOrMakeDelta(stage, id);
@@ -261,19 +286,17 @@ void MeshManager::adjustVertex(int stage, int id, ofVec3f change){
 //this constructs a list of deltas to update the scene with
 vector<Delta*> MeshManager::makeDeltaVector(int stage){
 	vector<Delta*> deltas;
-	cout << "making vector for stage " << stage << " count is " << changes.count(stage) << endl;
+
 
 	if(!changes.count(stage)) return deltas;
 
-	cout << "Changes at stage " << stage << " = " << changes[stage].size() << endl;
 
 	map<int, int> ids = changes[stage];
 	for(map<int, int>::iterator it = ids.begin(); it != ids.end(); it++) deltas.push_back(dList[(*it).second]);
 
-	cout << "* Deltas out " << deltas.size() << endl;
 	for(vector<Delta*> :: iterator it = deltas.begin(); it != deltas.end(); it++){
 		ofVec3f d = (*it)->getChange();
-		cout << "[" << d.x << ", " << d.y << ", " << d.z << "]" << endl;
+		d *= scale; //make sure that we're adjusting the delta by the global scale as well
 	}
 
 
@@ -293,6 +316,36 @@ bool MeshManager::doFlipNormal(){
 ofVec3f MeshManager::getMinPoint(){
 	return meshes[0]->getBoxMin();
 }
+
+
+void MeshManager::setScaleX(float f){
+	ofVec3f oldScale;
+	oldScale.set(scale);
+	scale.x = f;
+
+	cout << "Old Scale " << oldScale.x << " " << oldScale.y << " " << oldScale.z <<  endl;
+	cout << "New Scale " << scale.x << " " << scale.y << " " << scale.z <<  endl;
+	updateMeshScaling(oldScale);
+}
+
+void MeshManager::setScaleY(float f){
+
+	ofVec3f oldScale;
+	oldScale.set(scale);
+	scale.y = f;
+	updateMeshScaling(oldScale);
+
+}
+
+void MeshManager::setScaleZ(float f){
+
+	ofVec3f oldScale;
+	oldScale.set(scale);
+	scale.z = f;
+	updateMeshScaling(oldScale);
+}
+
+
 
 
 

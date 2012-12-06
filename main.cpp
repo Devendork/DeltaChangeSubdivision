@@ -30,7 +30,6 @@ typedef void BYTE;
 vector<int> selected_vertices();
 
 
-MeshManager* mm;
 set<int> active_vertices;
 unsigned int draw_subdivision;
 
@@ -51,6 +50,8 @@ static BOOL has_file;
 
 static const char * filename;
 
+MeshManager *mm;
+
 
 void ntExportObj(const Notification& n){
 	Scene& sc = *n.receiver<Scene>();
@@ -69,8 +70,37 @@ void ntSetLimitVisability(const Notification& n){
 	Scene& sc = *n.receiver<Scene>();
 	Button& b = *n.sender<Button>();
 	sc.toggleLimitMeshVisibility();
+}
+
+
+
+void ntScaleX(const Notification& n){
+
+	//MeshManager& meshm = *n.receiver<MeshManager>();
+	NumberDialer& s = *n.sender<NumberDialer>();
+
+	mm->setScaleX(s.getValue());
 
 }
+
+void ntScaleY(const Notification& n){
+
+	//MeshManager& m = *n.receiver<MeshManager>();
+	NumberDialer& s = *n.sender<NumberDialer>();
+	
+	mm->setScaleY(s.getValue());
+
+}
+
+void ntScaleZ(const Notification& n){
+
+	//MeshManager& m = *n.receiver<MeshManager>();
+	NumberDialer& s = *n.sender<NumberDialer>();
+	
+	mm->setScaleZ(s.getValue());
+
+}
+
 
 void ntSetViewDistance(const Notification& n){
 
@@ -128,7 +158,6 @@ void ntSetSubdivision(const Notification& n){
 }
 
 int main (int argc, char ** argv){
-
 	char * filename;
 	for(int i = 0; i<argc; i++) printf("argv[%d] = %s\n", i, argv[i]);
 	if(argc > 1){
@@ -136,7 +165,7 @@ int main (int argc, char ** argv){
 		has_file = TRUE;
 	} 
 
-	float scale = 1;
+	ofVec3f scale(1,1,1);
 
 	if(has_file){
 		mm = new MeshManager(scale, LIMIT_DEPTH, has_file, filename);
@@ -145,10 +174,12 @@ int main (int argc, char ** argv){
 	else{
 		g_fViewDistance = 250;
 		mm = new MeshManager(scale, LIMIT_DEPTH, has_file, filename);
+
 	}
 
 
 	Scene scene(Rect(270, 10, 400, 400), mm, g_nearPlane, g_fViewDistance);
+
 
 	View viewAdjustments(Rect(10,10, 180,400));
 	Label labelVertexAdjustments("Vertex Adjusters", false);	
@@ -164,6 +195,17 @@ int main (int argc, char ** argv){
 	NumberDialer nd_y(Rect(20), 3, 2);
 	NumberDialer nd_z(Rect(20), 3, 2);
 	NumberDialer nd_n(Rect(20), 3, 2);
+
+	View viewScales(Rect(10,viewAdjustments.bottom()+20, 400,80));
+	Label labelScale("Adjust Scale", false);		
+	View v_scalexyz(Rect(0, 0, 300, 20));
+	NumberDialer nd_scalex(Rect(20), 3, 2, 0.01, 999);
+	NumberDialer nd_scaley(Rect(20), 3, 2, 0.01, 999);
+	NumberDialer nd_scalez(Rect(20), 3, 2, 0.01, 999);
+
+	nd_scalex.setValue(1.);
+	nd_scaley.setValue(1.);
+	nd_scalez.setValue(1.);
 
 
 	Color c_c(1., 44./255., 207./255.);
@@ -193,14 +235,14 @@ int main (int argc, char ** argv){
 	NumberDialer nd_viewdistance(Rect(20), 4, 2, 1000, 0);
 
 	// Set properties of Views	
-	View* views[] = {&viewAdjustments, &viewSubdivisions, &scene};
-	for(int i=0; i<2; ++i){
+	View* views[] = {&viewAdjustments, &viewSubdivisions, &viewScales, &scene};
+	for(int i=0; i<3; ++i){
 		views[i]->addCallback(Event::MouseDrag, Behavior::mouseMove);
 		views[i]->enable(KeepWithinParent);
 	}
 
-	View* noBorders[] = {&v_x, &v_y, &v_z, &v_n, &v_cur, &v_limit, &v_export};
-	for(int i=0; i<7; ++i){
+	View* noBorders[] = {&v_x, &v_y, &v_z, &v_n, &v_cur, &v_limit, &v_export, &v_scalexyz};
+	for(int i=0; i<8; ++i){
 		noBorders[i]->disable(Property::DrawBorder);
 		noBorders[i]->disable(Property::DrawBack);
 	}
@@ -208,13 +250,14 @@ int main (int argc, char ** argv){
 	View* inParents[] = {&nd_x, &nd_y, &nd_z, &nd_n, 
 						&labelX, &labelY, &labelZ, &labelN, 
 						&b_cur, &label_cur, &b_limit, &label_limit,
-						&label_export
+						&label_export, &labelScale
 						};
-	for(int i=0; i<13; ++i){
+	for(int i=0; i<14; ++i){
 		inParents[i]->enable(KeepWithinParent);
 	}
 
 	Placer placer(viewAdjustments, Direction::S, Place::TL, 10,10, 10);
+	Placer placerscales(viewScales, Direction::S, Place::TL, 10,10, 10);
 	Placer placerx(v_x, Direction::E, Place::CL, 0, 0, 10);
 	Placer placery(v_y, Direction::E, Place::CL, 0, 0, 10);
 	Placer placerz(v_z, Direction::E, Place::CL, 0, 0, 10);
@@ -222,11 +265,12 @@ int main (int argc, char ** argv){
 	Placer placercur(v_cur, Direction::E, Place::CL, 0,0, 10);
 	Placer placerlimit(v_limit, Direction::E, Place::CL, 0,0, 10);
 	Placer placerexport(v_export, Direction::E, Place::CL, 0,0, 10);
+	Placer placerscalexyz(v_scalexyz, Direction::E, Place::CL, 0,0, 10);
 
 	// Create the Views
 	GLV top;	
 	top << scene;
-	scene << viewAdjustments;
+	scene << viewAdjustments << viewScales;
 	placer << labelVertexAdjustments << v_x << v_y << v_z << v_n 
 			<< labelSubdivisions 
 			<< nd_subdivision 
@@ -239,6 +283,9 @@ int main (int argc, char ** argv){
 	placercur << b_cur << label_cur;
 	placerlimit << b_limit << label_limit;
 	placerexport << b_export << label_export;
+
+	placerscales << labelScale << v_scalexyz;
+	placerscalexyz << nd_scalex << nd_scaley << nd_scalez;
 
 	
 	scene.stretch(1,1);
@@ -255,6 +302,9 @@ int main (int argc, char ** argv){
 	nd_subdivision.attach(ntSetSubdivision, Update::Value, &scene);
 	b_export.attach(ntExportObj, Update::Value, &scene);
 
+	nd_scalex.attach(ntScaleX, Update::Value, &mm);
+	nd_scaley.attach(ntScaleY, Update::Value, &mm);
+	nd_scalez.attach(ntScaleZ, Update::Value, &mm);
 
 	Window win(1080, 720, "Delta Change Subdivision");
 	win.setGLV(top);
