@@ -1,0 +1,53 @@
+#ifndef MESHMANAGER
+#define MESHMANAGER
+
+#include <vector>
+#include <map>
+#include "dmesh.h"
+#include "deltachange.h"
+#include <sstream>
+#include <fstream>
+#include <string>
+
+
+
+class MeshManager{
+	
+public:
+	MeshManager();
+	MeshManager(float, int, bool, char*);
+	void updateMeshes(unsigned int );
+	void setCurrentMesh(unsigned int i);
+	Mesh* getStateMesh(int );
+	Mesh* getCurrentMesh( );
+	Mesh* getAndSetCurrentMesh();
+	Mesh* getOriginalMesh();
+	Mesh* getLimitMesh();
+	Mesh* loadObj();
+	Mesh* loadMesh();
+	void adjustVertex(int , int , ofVec3f );
+	vector<Delta*> makeDeltaVector(int);
+	Delta* getOrMakeDelta(int , int );
+	void printChanges();
+ 	int getCurrentMeshLevel();
+ 	double getBoxSize();
+ 	bool doFlipNormal();
+ 	ofVec3f getMinPoint();
+
+	
+	
+private:
+	vector<Mesh*> meshes;
+	map<int, map<int, int> > changes; //map: stage_id -> ( map : vertex_id -> delta_id)
+	vector<Delta*> dList; 
+	float scale;		
+	int current;
+	int depth;
+	int limit_depth;
+	char* filename;
+	bool hasfile;
+};
+
+
+#endif
+
