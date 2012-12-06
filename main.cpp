@@ -52,6 +52,12 @@ static BOOL has_file;
 static const char * filename;
 
 
+void ntExportObj(const Notification& n){
+	Scene& sc = *n.receiver<Scene>();
+	Button& b = *n.sender<Button>();
+	sc.exportObj();
+}
+
 void ntSetCurrentVisability(const Notification& n){
 	Scene& sc = *n.receiver<Scene>();
 	Button& b = *n.sender<Button>();
@@ -165,20 +171,19 @@ int main (int argc, char ** argv){
 	Color c_y(44./255., 249./255, 1.);
 	Color c_k(0., 0., 0.);
 	
-	nd_x.cloneStyle().colors().set(StyleColor::BlackOnWhite);
-	nd_x.style()->color->text = c_c;
-
-	// n_x.colors().set(c_c, 0.7);
-	// n_y.colors().set(c_m, 0.7);
-	// n_z.colors().set(c_y, 0.7);
-	// n_n.colors().set(c_k, 0.7);
 	
 	View v_cur(Rect(0, 0, 200, 20));
 	Button b_cur;
 	Label label_cur("Hide Control Mesh", false);
+
 	View v_limit(Rect(0, 0, 200, 20));
 	Button b_limit;
 	Label label_limit("Hide Limit Mesh", false);
+
+	View v_export(Rect(0, 0, 200, 20));
+	Button b_export;
+	Label label_export("Export .OBJ", false);
+
 
 	View viewSubdivisions(Rect(20));
 	Label labelSubdivisions("Subdivision Number", false);
@@ -194,16 +199,18 @@ int main (int argc, char ** argv){
 		views[i]->enable(KeepWithinParent);
 	}
 
-	View* noBorders[] = {&v_x, &v_y, &v_z, &v_n, &v_cur, &v_limit};
-	for(int i=0; i<6; ++i){
+	View* noBorders[] = {&v_x, &v_y, &v_z, &v_n, &v_cur, &v_limit, &v_export};
+	for(int i=0; i<7; ++i){
 		noBorders[i]->disable(Property::DrawBorder);
 		noBorders[i]->disable(Property::DrawBack);
 	}
 
 	View* inParents[] = {&nd_x, &nd_y, &nd_z, &nd_n, 
 						&labelX, &labelY, &labelZ, &labelN, 
-						&b_cur, &label_cur, &b_limit, &label_limit};
-	for(int i=0; i<12; ++i){
+						&b_cur, &label_cur, &b_limit, &label_limit,
+						&label_export
+						};
+	for(int i=0; i<13; ++i){
 		inParents[i]->enable(KeepWithinParent);
 	}
 
@@ -214,18 +221,24 @@ int main (int argc, char ** argv){
 	Placer placern(v_n, Direction::E, Place::CL, 0, 0, 10);
 	Placer placercur(v_cur, Direction::E, Place::CL, 0,0, 10);
 	Placer placerlimit(v_limit, Direction::E, Place::CL, 0,0, 10);
+	Placer placerexport(v_export, Direction::E, Place::CL, 0,0, 10);
 
 	// Create the Views
 	GLV top;	
 	top << scene;
 	scene << viewAdjustments;
-	placer << labelVertexAdjustments << v_x << v_y << v_z << v_n << labelSubdivisions << nd_subdivision << labelViewDistance << nd_viewdistance << v_cur << v_limit;
+	placer << labelVertexAdjustments << v_x << v_y << v_z << v_n 
+			<< labelSubdivisions 
+			<< nd_subdivision 
+			<< labelViewDistance << nd_viewdistance 
+			<< v_cur << v_limit << v_export;
 	placerx << nd_x << labelX;
 	placery << nd_y << labelY;
 	placerz << nd_z << labelZ;
 	placern << nd_n << labelN;
 	placercur << b_cur << label_cur;
 	placerlimit << b_limit << label_limit;
+	placerexport << b_export << label_export;
 
 	
 	scene.stretch(1,1);
@@ -240,6 +253,7 @@ int main (int argc, char ** argv){
 	b_limit.attach(ntSetLimitVisability, Update::Value, &scene);
 	nd_viewdistance.attach(ntSetViewDistance, Update::Value, &scene);
 	nd_subdivision.attach(ntSetSubdivision, Update::Value, &scene);
+	b_export.attach(ntExportObj, Update::Value, &scene);
 
 
 	Window win(1080, 720, "Delta Change Subdivision");

@@ -52,6 +52,7 @@ public:
 	void toggleLimitMeshVisibility();
 	void toggleCurrentMeshVisibility();
 	void toggleAlignNormal();
+	void exportObj();
 
 	void set_size(float f);
 	void set_subdivision(int s);

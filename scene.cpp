@@ -68,6 +68,7 @@ void Scene::onDraw3D(GLV& g){
 	
 }
 
+
 bool Scene::onEvent(Event::t e, GLV& glv){
 	switch(e){
 	case Event::MouseDrag:
@@ -88,6 +89,31 @@ bool Scene::onEvent(Event::t e, GLV& glv){
 	return true;	// bubble unrecognized events to parent
 }
 
+
+//exports the OBJ for the limit mesh
+void Scene::exportObj(){
+	vector<Face*> faces = mm->getLimitMesh()->getFaces();
+	vector<Vertex*> vList = mm->getLimitMesh()->getVList();
+	
+
+	ofstream obj;
+  	obj.open ("deltasub.obj");
+  	 
+	obj << "# begin vertices" << endl;
+  	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++){
+  	 	ofVec3f p = (*it)->getPoint();
+  	 	obj << "v " << p.x << " " << p.y << " " << p.z << endl;
+  	 }
+  	 
+  	obj << endl << "# begin faces" << endl;
+  	for(vector<Face*> :: iterator it = faces.begin(); it != faces.end(); it++){
+  	 	obj << "f " << (*it)->getA()->getId() << " " << (*it)->getB()->getId() << " " << (*it)->getC()->getId()<< endl;
+  	 }
+  	 
+  	 obj.close();
+	 cout << "File Exported!" << endl;
+}
+
 void Scene::toggleLimitMeshVisibility(){
 	showLimitMesh = !showLimitMesh;
 }
@@ -96,8 +122,6 @@ void Scene::toggleCurrentMeshVisibility(){
 	showCurrentMesh = !showCurrentMesh;
 
 }
-
-
 
 void Scene::setViewDistance(float f){
 	g_fViewDistance = f;
