@@ -16,6 +16,7 @@ Face :: Face(int i, int v1, int v2, int v3){
 	c = new FaceVertex(v3);
 	
 	divided = false;
+	ps = OFF;
 	
 }
 
@@ -169,5 +170,12 @@ ofVec3f Face::getFaceNormal(){
 	return n;
 }
 
+PICKSTATE Face::getState(){
+	return ps;
+}
+
+void Face::setState(PICKSTATE s){
+	ps = s;
+}
 
 

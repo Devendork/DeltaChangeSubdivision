@@ -43,8 +43,13 @@ public:
 	void render_current_mesh();
 	void render_limit_mesh();
 	void render_picks();
+	void render_vertex_picks();
+	void render_face_picks();
 	void render_coords(int , float);
 	void render_selections();
+	void render_vertex_selections();
+	void render_face_selections();
+	ofVec3f eye_coords();
 
 	void update_dialer_values(ofVec3f delta);
 
@@ -52,6 +57,10 @@ public:
 	void enable_lights();
 	void pick(int x, int y, PICKSTATE state);
 	void change_pick_state(GLint hits, GLuint *names, PICKSTATE state);
+	void change_pick_faces(std::set<int> , PICKSTATE);
+	void change_pick_vertices(std::set<int>, PICKSTATE);
+	Face* closest_face(std::set<int> );
+	double total_distance(Face*);
 	vector<int> selected_vertices();
 	void keyb(int key);
 

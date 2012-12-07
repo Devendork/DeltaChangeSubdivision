@@ -34,6 +34,12 @@ Scene::Scene (const Rect &r, MeshManager* m, GLfloat nearPlane, GLfloat viewDist
 
 }
 
+ofVec3f Scene::eye_coords(){
+	ofVec3f eye;
+	eye.set(g_fViewDistance*cos(g_xz_theta), g_fViewDistance*sin(g_yz_theta), g_fViewDistance*sin(g_xz_theta));
+	return eye;
+}
+
 void Scene::setDialers(NumberDialer* x, NumberDialer* y, NumberDialer* z, NumberDialer* n){
 	nd_x = x;
 	nd_y = y; 
@@ -42,10 +48,16 @@ void Scene::setDialers(NumberDialer* x, NumberDialer* y, NumberDialer* z, Number
 }
 
 void Scene::onDraw3D(GLV& g){
+	ofVec3f eye = eye_coords();
+
+	GLint view[4];
+
+ 
+ 	glGetIntegerv(GL_VIEWPORT, view);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-    gluPerspective(60, 1080./720., g_fNearPlane, g_fFarPlane);
+    gluPerspective(60, (float)view[2]/(float)view[3], g_fNearPlane, g_fFarPlane);
  	glMatrixMode(GL_MODELVIEW);
 
 	double size = mm->getBoxSize();
@@ -59,7 +71,7 @@ void Scene::onDraw3D(GLV& g){
 
     if(showLimitMesh){
     glPushMatrix();
-	gluLookAt(g_fViewDistance*cos(g_xz_theta), g_fViewDistance*sin(g_yz_theta), g_fViewDistance*sin(g_xz_theta), 0, 0, 0, 0, 1, 0);
+	gluLookAt(eye.x, eye.y, eye.z, 0, 0, 0, 0, 1, 0);
     render_coords(-1, size);
 	enable_lights();
 	glTranslatef(-size/2., -size/2., size/2.);
@@ -70,7 +82,7 @@ void Scene::onDraw3D(GLV& g){
 
 
 	glPushMatrix();
-	gluLookAt(g_fViewDistance*cos(g_xz_theta), g_fViewDistance*sin(g_yz_theta), g_fViewDistance*sin(g_xz_theta), 0, 0, 0, 0, 1, 0);
+	gluLookAt(eye.x, eye.y, eye.z, 0, 0, 0, 0, 1, 0);
 	glTranslatef(-size/2., -size/2., size/2.);
 	if(showCurrentMesh) render_current_mesh();
 	render_selections();
@@ -183,8 +195,9 @@ void Scene::render_current_mesh(){
 			if(sym_mode){
 				glEnable(GL_BLEND);
 				glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);				
-				glColor4f(1., 44./255., 207./255., .5);
-
+				
+				if((*it)->getState() == OVER) glColor4f(1., 44./255., 207./255., 1.);
+				else glColor4f(1., 44./255., 207./255., .5);
 		    }else{ 
 		    	enable_lights();    
 				glColor4f(1., 0., 0., .5);
@@ -250,6 +263,10 @@ void Scene::render_limit_mesh(){
 }
 
 void Scene::render_selections(){
+	if(!sym_mode) render_vertex_selections();
+}
+
+void Scene::render_vertex_selections(){
 	vector<Vertex*> vList = mm->getCurrentMesh()->getVList();
 
 	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++){
@@ -276,8 +293,12 @@ void Scene::render_selections(){
 	}
 }
 
-
 void Scene::render_picks(){
+	if(sym_mode) render_face_picks();
+	else render_vertex_picks();
+}
+
+void Scene::render_vertex_picks(){
 
 	vector<Vertex*> vList = mm->getCurrentMesh()->getVList();
 		
@@ -288,7 +309,31 @@ void Scene::render_picks(){
 		glPushMatrix();
 		glTranslatef(A.x, A.y, A.z);
 		glutSolidCube(pickTargetSize);
-		glDisable(GL_BLEND);
+		glPopMatrix();
+	}
+}
+
+void Scene::render_face_picks(){
+	vector<Face*> faces = mm->getCurrentMesh()->getFaces();
+	vector<Vertex*> vList = mm->getCurrentMesh()->getVList();
+		
+	for(vector<Face*> :: iterator it = faces.begin(); it != faces.end(); it++){
+		ofVec3f A = vList[((*it)->getA()->id)-1]->getPoint();
+		ofVec3f B = vList[((*it)->getB()->id)-1]->getPoint();
+		ofVec3f C = vList[((*it)->getC()->id)-1]->getPoint();
+		ofVec3f n = (*it)->getFaceNormal();
+		
+		glLoadName((*it)->getId());
+		glPushMatrix();
+
+		glBegin(GL_TRIANGLES);
+		glNormal3f(n.x, n.y, n.z);
+		glVertex3f(A.x, A.y, A.z);
+		glNormal3f(n.x, n.y, n.z);
+		glVertex3f(B.x, B.y, B.z);
+		glNormal3f(n.x, n.y, n.z);
+		glVertex3f(C.x, C.y, C.z);
+		glEnd();
 		glPopMatrix();
 	}
 }
@@ -367,6 +412,7 @@ void Scene::pick(int x, int y, PICKSTATE state){
 	y = screenHeight - y;
 	
 	double size = mm->getBoxSize();
+	ofVec3f eye = eye_coords();
 
 	GLuint buff[64] = {0};
  	GLint hits, view[4];
@@ -398,7 +444,7 @@ void Scene::pick(int x, int y, PICKSTATE state){
 
 	 
 		glPushMatrix();
-		gluLookAt(g_fViewDistance*cos(g_xz_theta), g_fViewDistance*sin(g_yz_theta), g_fViewDistance*sin(g_xz_theta), 0, 0, 0, 0, 1, 0);
+		gluLookAt(eye.x, eye.y, eye.z, 0, 0, 0, 0, 1, 0);
 		glTranslatef(-size/2., -size/2., size/2.);
 		render_picks();
 		glPopMatrix();
@@ -423,11 +469,7 @@ void Scene::update_dialer_values(ofVec3f delta){
 
 void Scene::change_pick_state(GLint hits, GLuint *names, PICKSTATE state){
 
-
-	vector<Vertex*> vList = mm->getCurrentMesh()->getVList();
 	std::set<int> selections;
-	vector<int> removals;
-
 
 	//create a set of the selected vertices
 	for (int i = 0; i < hits; i++){
@@ -435,7 +477,14 @@ void Scene::change_pick_state(GLint hits, GLuint *names, PICKSTATE state){
  		selections.insert(s);
  	}
 
- 	int count_ons = 0;
+ 	if(sym_mode) change_pick_faces(selections, state);
+ 	else change_pick_vertices(selections, state);
+
+}
+
+void Scene::change_pick_vertices(std::set<int> selections, PICKSTATE state){
+	vector<Vertex*> vList = mm->getCurrentMesh()->getVList();
+	int count_ons = 0;
 	//for each vertex - update the value
 	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++){
 		Vertex* v = *it;
@@ -496,9 +545,80 @@ void Scene::change_pick_state(GLint hits, GLuint *names, PICKSTATE state){
 	}
 
 	if(count_ons == 0) update_dialer_values(ofVec3f(0,0,0));
+}
+
+void Scene::change_pick_faces(std::set<int> selections, PICKSTATE state){
+	vector<Face*> faces = mm->getCurrentMesh()->getFaces();
+	int selected_id = -1;
+
+	if(selections.size() > 0){
+		Face* closest = closest_face(selections);
+		selected_id = closest->getId();
+	}
+
+	for(vector<Face*> :: iterator it = faces.begin(); it != faces.end(); it++){
+		Face* f = *it;
+
+		//hover over or over away
+		if(state == OVER){
+			switch(f->getState()){
+				case OFF:
+					if(selected_id == f->getId()){
+						f->setState(OVER);
+					} 
+				break;
+				case OVER:
+					if(selected_id != f->getId()){
+						f->setState(OFF);
+					} 
+				break;
+			}
+		}
+	}
+
+	if(state == ON){
+		//make the symmetry happen for all the selected vertices
+		cout << "REFLECTING ON " << selected_id << endl;
+
+	}
 
 }
 
+
+Face* Scene::closest_face(std::set<int> ids){
+	vector<Face*> faces = mm->getCurrentMesh()->getFaces();
+	double min_dist = 2147483647;
+	Face* closest;
+
+	for(std::set<int> :: iterator it = ids.begin(); it != ids.end(); it++){
+
+		Face* f = faces[(*it)-1];
+		double d = total_distance(f);
+
+		if(d < min_dist){
+			min_dist = d;
+			closest = f;
+		}
+	}
+
+	return closest;
+
+}
+
+double Scene::total_distance(Face* f){
+	vector<Vertex*> vList = mm->getCurrentMesh()->getVList();
+	ofVec3f eye = eye_coords();
+	ofVec3f A = vList[(f->getA()->id)-1]->getPoint();
+	ofVec3f B = vList[(f->getB()->id)-1]->getPoint();		
+	ofVec3f C = vList[(f->getC()->id)-1]->getPoint();
+
+	double d1 = A.squareDistance(eye);
+	double d2 = B.squareDistance(eye);
+	double d3 = C.squareDistance(eye);
+
+	return (d1+d2+d3);
+
+}
 
 vector<int> Scene::selected_vertices(){
 	vector<Vertex*> vList = mm->getCurrentMesh()->getVList();
@@ -518,7 +638,6 @@ void Scene::adjust_vertex(ofVec3f amount){
 	if(selected.size() > 0 ){
 		for(vector<int> ::iterator it = selected.begin(); it != selected.end(); it++){
 			int id = *it;
-			cout << "adjusting " << id << endl;
 			mm->adjustVertex(mm->getCurrentMeshLevel(), id, amount);
 		} 
 	}
@@ -533,7 +652,6 @@ void Scene::adjust_vertex_by_normal(float f){
 			int id = *it;
 			ofVec3f amount = vList[id-1]->getNormal();
 			amount *= f;
-			cout << "adjusting by normal" << id << endl;
 			mm->adjustVertex(mm->getCurrentMeshLevel(), id, amount);
 		} 
 	}

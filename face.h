@@ -20,6 +20,11 @@ using namespace std;
 
 class FaceVertex;
 
+typedef int PICKSTATE;
+#define OFF 0
+#define OVER 1
+#define ON 2
+
 class Face{
 	
 public:
@@ -50,6 +55,8 @@ public:
 	void setFaceNormal(ofVec3f);
 	ofVec3f getFaceNormal();
 	
+	PICKSTATE getState();
+	void setState(PICKSTATE);
 
 	void printData();
 
@@ -61,6 +68,9 @@ private:
 	ofVec3f color;
 	ofVec3f n;
 	bool divided;	
+	PICKSTATE ps;
+
+
 };
 
 
