@@ -514,7 +514,7 @@ void Scene::change_pick_vertices(std::set<int> selections, PICKSTATE state){
 					if(selections.count(v->getId()) > 0){
 						v->setState(ON);
 						count_ons++;
-						update_dialer_values(mm->getDeltaValue(v->getId()));
+						update_dialer_values(mm->getVertexDeltaValue(v->getId()));
 						//cout << v->getId() << "CLICK: from OFF to ON " << endl;
 					}
 
@@ -522,7 +522,7 @@ void Scene::change_pick_vertices(std::set<int> selections, PICKSTATE state){
 				case OVER:
 					if(selections.count(v->getId()) > 0){ 
 						v->setState(ON);
-						update_dialer_values(mm->getDeltaValue(v->getId()));
+						update_dialer_values(mm->getVertexDeltaValue(v->getId()));
 						count_ons++;
 						//cout << v->getId() << "CLICK: from OVER to ON " << endl;
 					}else{
@@ -554,9 +554,7 @@ void Scene::change_pick_faces(std::set<int> picks, PICKSTATE state){
 	if(picks.size() > 0){
 		Face* closest = closest_face(picks);
 		selected_id = closest->getId();
-
 	    flood_planar_faces(selected_id, selections);
-		cout << "Selections size " << selections.size() << endl; 
 	}
 
 	vector<Face*> faces = mm->getCurrentMesh()->getFaces();
@@ -582,8 +580,11 @@ void Scene::change_pick_faces(std::set<int> picks, PICKSTATE state){
 
 	if(state == ON){
 		//make the symmetry happen for all the selected vertices
-		cout << "REFLECTING ON " << selected_id << endl;
-
+		if(selections.size() > 0){
+			vector<int> fids;
+			for(map<int, Face*> :: iterator it = selections.begin(); it != selections.end(); it++) fids.push_back((*it).first);
+			 mm->applyMirroring(fids);
+		}
 	}
 
 }
@@ -616,9 +617,7 @@ void Scene::flood_planar_faces(int fid, map<int, Face*>& ids){
 			to_check.insert(pair<int, Face*> (n->getId(), n)); 
 
 		}
-
 		to_check.erase(id);
-
 	}
 
 }

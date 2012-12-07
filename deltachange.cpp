@@ -1,14 +1,32 @@
 #include "deltachange.h"
 
-Delta :: Delta(int vertex_id, ofVec3f p){
+Delta :: Delta(int did, int vid, ofVec3f p){
 	change.set(p);
-	id = vertex_id;
-
-	
+	id = did;
+	vertex_id = vid;
+	sym_mode = false;
 }
 
-Delta :: Delta(int vertex_id){
-	id = vertex_id;
+Delta::Delta(int did, int fid,  vector<int> f){
+	face_id = fid;
+	id = did;
+	sym_faces.assign(f.begin(), f.end());
+	sym_mode = true;
+}
+
+Delta :: Delta(int did, int vid){
+	id = did;
+	vertex_id = vid;
+	sym_mode = false;
+
+}
+
+bool Delta::isSym(){
+	return sym_mode;
+}
+
+vector<int> Delta::getSymFaces(){
+	return sym_faces;
 }
 
 void Delta::setChange(ofVec3f f){
@@ -20,7 +38,7 @@ ofVec3f Delta::getChange(){
 }
 
 int Delta::getVertexId(){
-	return id;
+	return vertex_id;
 }
 
 

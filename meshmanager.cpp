@@ -152,7 +152,7 @@ void MeshManager::updateMeshScaling(ofVec3f oldScale){
 	for(int i = 0; i < meshes.size(); i++){
 		if(i == 0 ){
 			meshes[0]->applyScaling(scale/oldScale);
-		    meshes[0]->addOffsets(makeDeltaVector(i));
+		    meshes[0]->addModifications(makeDeltaVector(i));
 
 		}else{
 			Mesh* prev = meshes[i-1];
@@ -172,7 +172,7 @@ void MeshManager::updateMeshes(unsigned int stage){
 	int num_meshes = meshes.size();
 
 	for(int i = 0; i <= stage; i++){
-		meshes[i]->addOffsets(makeDeltaVector(i));
+		meshes[i]->addModifications(makeDeltaVector(i));
 	}
 
 	//recalculate all meshes after the current stage mesh from scratch
@@ -220,7 +220,7 @@ Mesh* MeshManager::getOriginalMesh(){
 }
 
 void MeshManager::printChanges(){
-	for(map<int, map<int, int> > :: iterator it = changes.begin(); it != changes.end(); it++){
+	for(map<int, map<int, int> > :: iterator it = vertex_changes.begin(); it != vertex_changes.end(); it++){
 		cout << "Stage " << (*it).first << endl;
 		map<int, int> stage_deltas = (*it).second;
 		for(map<int, int> ::iterator iit = stage_deltas.begin(); iit != stage_deltas.end(); iit++){
@@ -229,42 +229,107 @@ void MeshManager::printChanges(){
 	}
 }
 
-ofVec3f MeshManager::getDeltaValue(int id){
+ofVec3f MeshManager::getVertexDeltaValue(int id){
 
 	map<int, int> stage_deltas;	
 	ofVec3f nothing;
 
 	//first see if it exists at all
-	if(changes.count(current) && changes[current].count(id)){
-		return dList[changes[current][id]]->getChange();	
+	if(vertex_changes.count(current) && vertex_changes[current].count(id)){
+		return dList[vertex_changes[current][id]]->getChange();	
 	}
 
 	return nothing;
 }
 
+//returns the face from this set of faces that the delta change is indexed to
+//returns -1 if none of those faces were indexed
+int MeshManager::getStageFace(int stage, vector<int> faces){
+	for(vector<int> :: iterator it = faces.begin(); it != faces.end(); it++){
+		if(face_changes[stage].count(*it)) return *it;
+	}
+	return -1;
+}
 
-Delta* MeshManager::getOrMakeDelta(int stage, int id){
+
+void MeshManager::applyMirroring(vector<int> faces){
+	getOrMakeSymDelta(current, faces);
+	updateMeshes(current);
+
+}
+
+Delta* MeshManager::getOrMakeSymDelta(int stage, vector<int> faces){
+
+	map<int, int> stage_deltas;	
+	int face_id = getStageFace(stage, faces);
+	int id = *faces.begin();
+	//if the stage and vertex id exists, send it back
+	if(face_changes.count(stage) && face_id != -1){
+		return dList[face_changes[stage][id]];
+
+	}else if(face_changes.count(stage) && face_id == -1){
+		//the stage was found but this vertex wasn't
+		int did = dList.size();
+		Delta* d = new Delta(did, id, faces);
+		dList.push_back(d);
+		face_changes[stage].insert(pair<int, int> (id, did));
+		changed_order[stage].push_back(did);
+		return d;
+
+	}else if(!face_changes.count(stage)){
+		//the stage didn't exist
+		int did = dList.size();
+		Delta* d = new Delta(did, id, faces);
+		dList.push_back(d);
+		map<int, int> face_deltas;
+		face_deltas.insert(pair<int, int> (id, did));
+		face_changes.insert(pair<int, map<int, int> >(stage, face_deltas));
+
+		vector<int> ordering;
+		ordering.push_back(did);
+		changed_order.insert(pair<int, vector<int> >(stage, ordering));
+
+		return d;	
+	}else{
+		cout << "Nothing Matched" << endl;
+	}
+
+	return NULL;
+
+}
+
+
+
+Delta* MeshManager::getOrMakeVertexDelta(int stage, int vertex_id){
 
 	map<int, int> stage_deltas;	
 
-	//first see if it exists at all
-	if(changes.count(stage) && changes[stage].count(id)){
-		return dList[changes[stage][id]];
-	}else if(changes.count(stage) && !changes[stage].count(id)){
+	//if the stage and vertex id exists, send it back
+	if(vertex_changes.count(stage) && vertex_changes[stage].count(vertex_id)){
+		return dList[vertex_changes[stage][vertex_id]];
 
-		Delta* d = new Delta(id);
+	}else if(vertex_changes.count(stage) && !vertex_changes[stage].count(vertex_id)){
+		//the stage was found but this vertex wasn't
 		int did = dList.size();
+		Delta* d = new Delta(did, vertex_id);
 		dList.push_back(d);
-		changes[stage].insert(pair<int, int> (id, did));
+		vertex_changes[stage].insert(pair<int, int> (vertex_id, did));
+		changed_order[stage].push_back(did);
 		return d;
 
-	}else if(!changes.count(stage)){
-		Delta* d = new Delta(id);
+	}else if(!vertex_changes.count(stage)){
+		//the stage didn't exist
 		int did = dList.size();
+		Delta* d = new Delta(did, vertex_id);
 		dList.push_back(d);
 		map<int, int> vertex_deltas;
-		vertex_deltas.insert(pair<int, int> (id, did));
-		changes.insert(pair<int, map<int, int> >(stage, vertex_deltas));
+		vertex_deltas.insert(pair<int, int> (vertex_id, did));
+		vertex_changes.insert(pair<int, map<int, int> >(stage, vertex_deltas));
+
+		vector<int> ordering;
+		ordering.push_back(did);
+		changed_order.insert(pair<int, vector<int> >(stage, ordering));
+
 		return d;	
 	}else{
 		cout << "Nothing Matched" << endl;
@@ -281,7 +346,7 @@ Delta* MeshManager::getOrMakeDelta(int stage, int id){
 void MeshManager::adjustVertex(int stage, int id, ofVec3f change){
 
 
-	Delta* d = getOrMakeDelta(stage, id);
+	Delta* d = getOrMakeVertexDelta(stage, id);
 	ofVec3f existing = d->getChange();
 
 	if(change.x == 0) change.x = existing.x;
@@ -300,17 +365,18 @@ void MeshManager::adjustVertex(int stage, int id, ofVec3f change){
 vector<Delta*> MeshManager::makeDeltaVector(int stage){
 	vector<Delta*> deltas;
 
+	//nothing has been changed in this phase yet
+	if(!changed_order.count(stage)) return deltas;
 
-	if(!changes.count(stage)) return deltas;
+
+	vector<int> delta_ids = changed_order[stage];
+	for(vector<int>::iterator it = delta_ids.begin(); it != delta_ids.end(); it++) deltas.push_back(dList[(*it)]);
 
 
-	map<int, int> ids = changes[stage];
-	for(map<int, int>::iterator it = ids.begin(); it != ids.end(); it++) deltas.push_back(dList[(*it).second]);
-
-	for(vector<Delta*> :: iterator it = deltas.begin(); it != deltas.end(); it++){
-		ofVec3f d = (*it)->getChange();
-		d *= scale; //make sure that we're adjusting the delta by the global scale as well
-	}
+	// for(vector<Delta*> :: iterator it = deltas.begin(); it != deltas.end(); it++){
+	// 	ofVec3f d = (*it)->getChange();
+	// 	d *= scale; //make sure that we're adjusting the delta by the global scale as well
+	// }
 
 
 	return deltas;

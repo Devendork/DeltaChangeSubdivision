@@ -46,7 +46,7 @@ public:
 	int  getVertexOnEdgeId(int , int );
 	void connectEdgeFaces(Face* , Face* , int , int , int );
 	Vertex* getOrMakeVertex(Face*, FaceVertex* , FaceVertex* );
-	void placeVertex(Face*, FaceVertex*, FaceVertex*, Vertex*);
+	//void placeVertex(Face*, FaceVertex*, FaceVertex*, Vertex*);
 	void updateIncidentEdgeData();
 	void butterflyScheme(Face*, FaceVertex*, FaceVertex*, Vertex*);
 	ofVec3f extraordinaryVertexValue(Face* , FaceVertex* );
@@ -55,7 +55,8 @@ public:
 	ofVec3f computeFaceNormal(Face* f);
 	ofVec3f computeVertexNormal(Vertex* );
 	void updateNormals();
-	void addOffsets(vector<Delta*> changes);
+	//void addOffsets(vector<Delta*> changes);
+	void addModifications(vector<Delta*> changes);
 	void resetVariables();
 	ofVec3f getBoxMin();
 	ofVec3f getBoxMax();
@@ -64,6 +65,7 @@ public:
 	void updateMaxs(ofVec3f& m, ofVec3f c);
 	void setFacePointers();
 	void applyScaling(ofVec3f);
+	void mirrorMesh(vector<int>);
 
 
 private:

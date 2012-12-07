@@ -84,6 +84,7 @@ Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f){
 
 Mesh::Mesh(int s, Mesh* old, vector<Delta*> changes){
 	stage = s;
+	
 	vector<Face*> f = old->getFaces();
 	vector<Vertex*> v = old->getVList();
 	
@@ -93,19 +94,24 @@ Mesh::Mesh(int s, Mesh* old, vector<Delta*> changes){
 	} 
 	
 	subdivide();
-	addOffsets(changes);
+	addModifications(changes);
 	setFacePointers();
 	updateNormals();
 }
 
 
-void Mesh::addOffsets(vector<Delta*> changes){
-	//go through and moves all vertices in delta by the amount described in delta
+void Mesh::addModifications(vector<Delta*> changes){
+	//go through and apply each change 
+
 	for(vector<Delta*> :: iterator it = changes.begin(); it != changes.end(); it++){
-		int vid = (*it)->getVertexId();
-		ofVec3f d = (*it)->getChange();
-		cout << "offset vertex id " << vid << endl;
-		vList[vid-1]->offset(d);
+		bool sym = (*it)->isSym();
+		if(sym){
+			mirrorMesh((*it)->getSymFaces());
+		}else{
+			int vid = (*it)->getVertexId();
+			ofVec3f d = (*it)->getChange();
+			vList[vid-1]->offset(d);
+		}
 	}
 
 }
@@ -126,6 +132,9 @@ void Mesh::updateNormals(){
 }
 
 
+void Mesh::mirrorMesh(vector<int> faces){
+
+}
 
 void Mesh::updateIncidentEdgeData(){
 	set<int> checked_vtxs;
@@ -177,7 +186,6 @@ void Mesh::resetVariables(){
 
 void Mesh::subdivide(){
 	
-	cout << "Subdividing stage " << stage << " with num vertices = " << vList.size() << endl;
 	vector<Face*> originals;
 	vector<ofVec3f> placement;
 	set<int> checked;
@@ -257,37 +265,36 @@ void Mesh::subdivide(){
 	}
 
 	deleteOldFaces();
-	cout << "Exit Subdivision" << endl;
 
 	
 }
 
 
 
-//take the vertex along this edge and replace it according to zorins rules
-void Mesh::placeVertex(Face* f, FaceVertex* A, FaceVertex* B, Vertex* v){
-	cout << "check A: " << vList[(A->id)- 1]->getIncident() << ", B: " << vList[(B->id)- 1]->getIncident() << endl;
+// //take the vertex along this edge and replace it according to zorins rules
+// void Mesh::placeVertex(Face* f, FaceVertex* A, FaceVertex* B, Vertex* v){
+// 	cout << "check A: " << vList[(A->id)- 1]->getIncident() << ", B: " << vList[(B->id)- 1]->getIncident() << endl;
 
-	if(vList[(A->id)- 1]->getIncident() == 6 && vList[(B->id)- 1]->getIncident() ==6){
-		cout << "Normal Scheme" << endl;
-		butterflyScheme(f, A, B, v);
-	}else if (vList[(A->id)- 1]->getIncident() != 6 && vList[(B->id)- 1]->getIncident() !=6) {
-		cout << "2 ExtraOrdinary from " <<A->id << " to " << B->id << endl;
+// 	if(vList[(A->id)- 1]->getIncident() == 6 && vList[(B->id)- 1]->getIncident() ==6){
+// 		cout << "Normal Scheme" << endl;
+// 		butterflyScheme(f, A, B, v);
+// 	}else if (vList[(A->id)- 1]->getIncident() != 6 && vList[(B->id)- 1]->getIncident() !=6) {
+// 		cout << "2 ExtraOrdinary from " <<A->id << " to " << B->id << endl;
 
-		ofVec3f v1 = extraordinaryVertexValue(f, A);
-		ofVec3f v2 = extraordinaryVertexValue(f, B);
-		v->setPoint((v1+v2)/2);
-	}else if(vList[(A->id)- 1]->getIncident() != 6 && vList[(B->id)- 1]->getIncident() ==6){
-		cout << "A ExtraOrdinary from " << A->id << " to " << B->id << endl;
-		v->setPoint(extraordinaryVertexValue(f, A));
+// 		ofVec3f v1 = extraordinaryVertexValue(f, A);
+// 		ofVec3f v2 = extraordinaryVertexValue(f, B);
+// 		v->setPoint((v1+v2)/2);
+// 	}else if(vList[(A->id)- 1]->getIncident() != 6 && vList[(B->id)- 1]->getIncident() ==6){
+// 		cout << "A ExtraOrdinary from " << A->id << " to " << B->id << endl;
+// 		v->setPoint(extraordinaryVertexValue(f, A));
 		
-	}else if(vList[(A->id)- 1]->getIncident() == 6 && vList[(B->id)- 1]->getIncident() !=6){
-		cout << "B ExtraOrdinary from " << A->id << " to " << B->id << endl;
-		v->setPoint(extraordinaryVertexValue(f, B));
-	}else {
-		assert(0);
-	}
-}
+// 	}else if(vList[(A->id)- 1]->getIncident() == 6 && vList[(B->id)- 1]->getIncident() !=6){
+// 		cout << "B ExtraOrdinary from " << A->id << " to " << B->id << endl;
+// 		v->setPoint(extraordinaryVertexValue(f, B));
+// 	}else {
+// 		assert(0);
+// 	}
+// }
 
 ofVec3f Mesh::extraordinaryVertexValue(Face* f, FaceVertex* A){
 	
@@ -336,18 +343,12 @@ ofVec3f Mesh::extraordinaryVertexValue(Face* f, FaceVertex* A){
 		weight_sum = 0.25;
 
 	}
-
-	cout << "weightsum " << weight_sum << endl;
 	weight_sum = 1. - weight_sum;
 	
 	for(int i = 0; i < K; i++){
 		value += weights[i]*s[i];
 	}
 	value+= weight_sum*vList[vid-1]->getPoint();
-	
-	
-	
-	cout << "Total = " << value.x << endl << endl;
 
 	
 	return value;
@@ -662,7 +663,6 @@ void Mesh::updateMaxs(ofVec3f& m, ofVec3f c){
 }
 
 void Mesh::applyScaling(ofVec3f s){
-	cout << "Applying Scaling of " << s.x << " " << s.y << " " << s.z << endl;
 	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++){
 		ofVec3f p = (*it)->getOriginalPoint(); //make sure to get the original point here, not hte delta changed point
 		p*= s;
