@@ -34,9 +34,12 @@ public:
  	double getBoxSize();
  	bool doFlipNormal();
  	ofVec3f getMinPoint();
+	ofVec3f getDeltaValue(int i);
 	void setScaleX(float f);
 	void setScaleY(float f);
 	void setScaleZ(float f);
+
+
 	
 private:
 	vector<Mesh*> meshes;

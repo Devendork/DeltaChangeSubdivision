@@ -1,18 +1,25 @@
 	#include "scene.h"
 
 
-Scene::Scene (const Rect &r, MeshManager* m, GLfloat nearPlane, GLfloat viewDistance){
+Scene::Scene (const Rect &r, MeshManager* m, GLfloat nearPlane, GLfloat viewDistance, 
+		NumberDialer* nd_x, NumberDialer* nd_y, NumberDialer* nd_z, NumberDialer* nd_n){
 
 	//size = 0;
 	mm = m;
 	draw_subdivision = 0;
+
+	dx = nd_x;
+	dy = nd_y;
+	dz = nd_z;
+	dn = nd_n;
 
 	ofVec3f min = mm->getMinPoint();
 	double size = mm->getBoxSize();
 
 	cout << size << endl;
 
-	g_fViewDistance = size*2 + min.z;
+	if(!mm->doFlipNormal()) g_fViewDistance = viewDistance;
+	else g_fViewDistance = size*2 + min.z;
 	g_fRotations = 0;
 	g_fRotationsy = 0;
 	g_fNearPlane = nearPlane;
@@ -378,6 +385,19 @@ void Scene::pick(int x, int y, PICKSTATE state){
  	glMatrixMode(GL_MODELVIEW);
 }
 
+void Scene::update_dialer_values(ofVec3f delta){
+ 		//for each of the selections, see if they have a delta value 
+ 		// cout << dx << endl;
+ 		// cout << dy << endl;
+ 		// cout << dz << endl;
+ 		// cout << dn << endl;
+ 		// dx->setValue(delta.x);
+ 		// dy->setValue(delta.y);
+ 		// dz->setValue(delta.z);
+ 		// dn->setValue(0);
+}
+
+
 void Scene::change_pick_state(GLint hits, GLuint *names, PICKSTATE state){
 
 
@@ -392,6 +412,7 @@ void Scene::change_pick_state(GLint hits, GLuint *names, PICKSTATE state){
  		selections.insert(s);
  	}
 
+ 	int count_ons = 0;
 	//for each vertex - update the value
 	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++){
 		Vertex* v = *it;
@@ -411,6 +432,7 @@ void Scene::change_pick_state(GLint hits, GLuint *names, PICKSTATE state){
 						//cout << v->getId() << "HOVER: from OVER to OFF " << endl;
 					} 
 				break;
+				case ON: count_ons++; break;
 				default:
 				break;
 			}
@@ -419,6 +441,8 @@ void Scene::change_pick_state(GLint hits, GLuint *names, PICKSTATE state){
 				case OFF:
 					if(selections.count(v->getId()) > 0){
 						v->setState(ON);
+						count_ons++;
+						update_dialer_values(mm->getDeltaValue(v->getId()));
 						//cout << v->getId() << "CLICK: from OFF to ON " << endl;
 					}
 
@@ -426,6 +450,8 @@ void Scene::change_pick_state(GLint hits, GLuint *names, PICKSTATE state){
 				case OVER:
 					if(selections.count(v->getId()) > 0){ 
 						v->setState(ON);
+						update_dialer_values(mm->getDeltaValue(v->getId()));
+						count_ons++;
 						//cout << v->getId() << "CLICK: from OVER to ON " << endl;
 					}else{
 						v->setState(OFF);
@@ -436,6 +462,8 @@ void Scene::change_pick_state(GLint hits, GLuint *names, PICKSTATE state){
 					if(selections.count(v->getId()) > 0){
 						v->setState(OFF);
 						//cout << v->getId() << "CLICK: from ON to OFF " << endl;
+					}else{
+						count_ons++;
 					}
 				default:
 				break;
@@ -443,6 +471,8 @@ void Scene::change_pick_state(GLint hits, GLuint *names, PICKSTATE state){
 		}
 
 	}
+
+	if(count_ons == 0) update_dialer_values(ofVec3f(0,0,0));
 
 }
 

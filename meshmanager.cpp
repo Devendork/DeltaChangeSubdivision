@@ -229,6 +229,19 @@ void MeshManager::printChanges(){
 	}
 }
 
+ofVec3f MeshManager::getDeltaValue(int id){
+
+	map<int, int> stage_deltas;	
+	ofVec3f nothing;
+
+	//first see if it exists at all
+	if(changes.count(current) && changes[current].count(id)){
+		return dList[changes[current][id]]->getChange();	
+	}
+
+	return nothing;
+}
+
 
 Delta* MeshManager::getOrMakeDelta(int stage, int id){
 

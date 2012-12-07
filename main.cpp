@@ -47,11 +47,19 @@ static int g_xClick = 0;                      // Initial window height
 static BOOL g_bButton1Down = FALSE;
 static BOOL g_bButton2Down = FALSE;
 static BOOL has_file;
+static BOOL sync_scales = FALSE;
 
 static const char * filename;
 
 MeshManager *mm;
+NumberDialer* nd_scalex;
+NumberDialer* nd_scaley;
+NumberDialer* nd_scalez;
 
+NumberDialer* nd_x;
+NumberDialer* nd_y;
+NumberDialer* nd_z;
+NumberDialer* nd_n;
 
 void ntExportObj(const Notification& n){
 	Scene& sc = *n.receiver<Scene>();
@@ -72,23 +80,45 @@ void ntSetLimitVisability(const Notification& n){
 	sc.toggleLimitMeshVisibility();
 }
 
+void ntSyncScales(const Notification& n){
+
+	//Scene& sc = *n.receiver<Scene>();
+	Button& b = *n.sender<Button>();
+	sync_scales = !sync_scales;
+
+	//match all to the xvalue
+	if(sync_scales){
+		double x = nd_scalex->getValue();
+		nd_scaley->setValue(x);
+		nd_scalez->setValue(x);
+	}
+}
 
 
 void ntScaleX(const Notification& n){
 
 	//MeshManager& meshm = *n.receiver<MeshManager>();
 	NumberDialer& s = *n.sender<NumberDialer>();
-
-	mm->setScaleX(s.getValue());
-
+	double x = s.getValue();
+	mm->setScaleX(x);
+	
+	if(sync_scales){
+		nd_scaley->setValue(x);
+		nd_scalez->setValue(x);
+	}
 }
 
 void ntScaleY(const Notification& n){
 
 	//MeshManager& m = *n.receiver<MeshManager>();
 	NumberDialer& s = *n.sender<NumberDialer>();
-	
-	mm->setScaleY(s.getValue());
+	double y = s.getValue();
+	mm->setScaleY(y);
+
+	if(sync_scales){
+		nd_scalex->setValue(y);
+		nd_scalez->setValue(y);
+	}
 
 }
 
@@ -96,8 +126,13 @@ void ntScaleZ(const Notification& n){
 
 	//MeshManager& m = *n.receiver<MeshManager>();
 	NumberDialer& s = *n.sender<NumberDialer>();
-	
-	mm->setScaleZ(s.getValue());
+	double z = s.getValue();	
+	mm->setScaleZ(z);
+
+	if(sync_scales){
+		nd_scalex->setValue(z);
+		nd_scaley->setValue(z);
+	}
 
 }
 
@@ -178,7 +213,7 @@ int main (int argc, char ** argv){
 	}
 
 
-	Scene scene(Rect(270, 10, 400, 400), mm, g_nearPlane, g_fViewDistance);
+	Scene scene(Rect(270, 10, 400, 400), mm, g_nearPlane, g_fViewDistance, nd_x, nd_y, nd_z, nd_n);
 
 
 	View viewAdjustments(Rect(10,10, 180,400));
@@ -191,21 +226,26 @@ int main (int argc, char ** argv){
 	View v_y(Rect(0, 0, 200, 20));
 	View v_z(Rect(0, 0, 200, 20));
 	View v_n(Rect(0, 0, 200, 20));
-	NumberDialer nd_x(Rect(20), 3, 2);
-	NumberDialer nd_y(Rect(20), 3, 2);
-	NumberDialer nd_z(Rect(20), 3, 2);
-	NumberDialer nd_n(Rect(20), 3, 2);
+	nd_x = new NumberDialer(Rect(20), 3, 2);
+	nd_y = new NumberDialer(Rect(20), 3, 2);
+	nd_z = new NumberDialer(Rect(20), 3, 2);
+	nd_n = new NumberDialer(Rect(20), 3, 2);
+
 
 	View viewScales(Rect(10,viewAdjustments.bottom()+20, 400,80));
 	Label labelScale("Adjust Scale", false);		
 	View v_scalexyz(Rect(0, 0, 300, 20));
-	NumberDialer nd_scalex(Rect(20), 3, 2, 0.01, 999);
-	NumberDialer nd_scaley(Rect(20), 3, 2, 0.01, 999);
-	NumberDialer nd_scalez(Rect(20), 3, 2, 0.01, 999);
+	nd_scalex = new NumberDialer(Rect(20), 3, 2, 0.01, 999);
+	nd_scaley = new NumberDialer(Rect(20), 3, 2, 0.01, 999);
+	nd_scalez = new NumberDialer(Rect(20), 3, 2, 0.01, 999);
 
-	nd_scalex.setValue(1.);
-	nd_scaley.setValue(1.);
-	nd_scalez.setValue(1.);
+	nd_scalex->setValue(1.);
+	nd_scaley->setValue(1.);
+	nd_scalez->setValue(1.);
+
+	View v_sync(Rect(0, 0, 200, 20));
+	Button b_sync;
+	Label label_sync("Sync", false);
 
 
 	Color c_c(1., 44./255., 207./255.);
@@ -229,7 +269,7 @@ int main (int argc, char ** argv){
 
 	View viewSubdivisions(Rect(20));
 	Label labelSubdivisions("Subdivision Number", false);
-	NumberDialer nd_subdivision(Rect(20), 1, 0, 5, 0);
+	NumberDialer nd_subdivision(Rect(20), 1, 0, LIMIT_DEPTH, 0);
 
 	Label labelViewDistance("View Distance", false);
 	NumberDialer nd_viewdistance(Rect(20), 4, 2, 1000, 0);
@@ -241,18 +281,20 @@ int main (int argc, char ** argv){
 		views[i]->enable(KeepWithinParent);
 	}
 
-	View* noBorders[] = {&v_x, &v_y, &v_z, &v_n, &v_cur, &v_limit, &v_export, &v_scalexyz};
-	for(int i=0; i<8; ++i){
+	View* noBorders[] = {&v_x, &v_y, &v_z, &v_n, &v_cur, &v_limit, &v_export, &v_scalexyz, &v_sync};
+	for(int i=0; i<9; ++i){
 		noBorders[i]->disable(Property::DrawBorder);
 		noBorders[i]->disable(Property::DrawBack);
 	}
 
-	View* inParents[] = {&nd_x, &nd_y, &nd_z, &nd_n, 
+	View* inParents[] = {nd_x, nd_y, nd_z, nd_n, 
 						&labelX, &labelY, &labelZ, &labelN, 
 						&b_cur, &label_cur, &b_limit, &label_limit,
-						&label_export, &labelScale
+						&label_export, &labelScale, nd_scalex, nd_scaley,
+						nd_scalez, &b_sync, &label_sync, &b_export, 
+						&label_export
 						};
-	for(int i=0; i<14; ++i){
+	for(int i=0; i<21; ++i){
 		inParents[i]->enable(KeepWithinParent);
 	}
 
@@ -266,6 +308,7 @@ int main (int argc, char ** argv){
 	Placer placerlimit(v_limit, Direction::E, Place::CL, 0,0, 10);
 	Placer placerexport(v_export, Direction::E, Place::CL, 0,0, 10);
 	Placer placerscalexyz(v_scalexyz, Direction::E, Place::CL, 0,0, 10);
+	Placer placersync(v_sync, Direction::E, Place::CL, 0,0, 10);
 
 	// Create the Views
 	GLV top;	
@@ -284,27 +327,29 @@ int main (int argc, char ** argv){
 	placerlimit << b_limit << label_limit;
 	placerexport << b_export << label_export;
 
-	placerscales << labelScale << v_scalexyz;
+	placerscales << labelScale << v_scalexyz << v_sync;
 	placerscalexyz << nd_scalex << nd_scaley << nd_scalez;
+	placersync << b_sync << label_sync;
 
 	
 	scene.stretch(1,1);
 	scene.maximize();
 
 	//attach notifications		
-	nd_x.attach(ntSetOffsetX, Update::Value, &scene);
-	nd_y.attach(ntSetOffsetY, Update::Value, &scene);
-	nd_z.attach(ntSetOffsetZ, Update::Value, &scene);
-	nd_n.attach(ntSetOffsetNormal, Update::Value, &scene);
+	nd_x->attach(ntSetOffsetX, Update::Value, &scene);
+	nd_y->attach(ntSetOffsetY, Update::Value, &scene);
+	nd_z->attach(ntSetOffsetZ, Update::Value, &scene);
+	nd_n->attach(ntSetOffsetNormal, Update::Value, &scene);
 	b_cur.attach(ntSetCurrentVisability, Update::Value, &scene);
 	b_limit.attach(ntSetLimitVisability, Update::Value, &scene);
 	nd_viewdistance.attach(ntSetViewDistance, Update::Value, &scene);
 	nd_subdivision.attach(ntSetSubdivision, Update::Value, &scene);
 	b_export.attach(ntExportObj, Update::Value, &scene);
 
-	nd_scalex.attach(ntScaleX, Update::Value, &mm);
-	nd_scaley.attach(ntScaleY, Update::Value, &mm);
-	nd_scalez.attach(ntScaleZ, Update::Value, &mm);
+	nd_scalex->attach(ntScaleX, Update::Value, &mm);
+	nd_scaley->attach(ntScaleY, Update::Value, &mm);
+	nd_scalez->attach(ntScaleZ, Update::Value, &mm);
+	b_sync.attach(ntSyncScales, Update::Value, &mm);
 
 	Window win(1080, 720, "Delta Change Subdivision");
 	win.setGLV(top);
