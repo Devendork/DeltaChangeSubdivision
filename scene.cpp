@@ -13,6 +13,9 @@ Scene::Scene (const Rect &r, MeshManager* m, GLfloat nearPlane, GLfloat viewDist
 	dz = nd_z;
 	dn = nd_n;
 
+	g_xz_theta = 3*PI/2.;
+	g_yz_theta = 0;
+
 	ofVec3f min = mm->getMinPoint();
 	double size = mm->getBoxSize();
 
@@ -20,8 +23,6 @@ Scene::Scene (const Rect &r, MeshManager* m, GLfloat nearPlane, GLfloat viewDist
 
 	if(!mm->doFlipNormal()) g_fViewDistance = viewDistance;
 	else g_fViewDistance = size*2 + min.z;
-	g_fRotations = 0;
-	g_fRotationsy = 0;
 	g_fNearPlane = nearPlane;
 	g_fFarPlane = size*size;
 
@@ -51,13 +52,44 @@ void Scene::onDraw3D(GLV& g){
 
     if(showLimitMesh){
     glPushMatrix();
+	gluLookAt(g_fViewDistance*cos(g_xz_theta), g_fViewDistance*sin(-g_yz_theta), g_fViewDistance*sin(g_xz_theta), 0, 0, 0, 0, 1, 0);
 
-	gluLookAt(0, 0, -g_fViewDistance, 0, 0, -1, 0, 1, 0);
+
+	//RENDER COORDS
+    glPushMatrix();
+	//draw the frenet frame around the selected point
+	glLineWidth(2.);
+
+	float lineLen = 100;
+	ofVec3f vec;
+
+
+
+	glColor3f(1., 0, 0);
+	glBegin(GL_LINES);
+	glVertex3f(0., 0., 0.);
+	glVertex3f(lineLen, 0., 0.);
+	glEnd();
+
+	glColor3f(0, 1.,0);
+	glBegin(GL_LINES);
+	glVertex3f(0., 0., 0.);
+	glVertex3f(0., lineLen, 0.);	
+	glEnd();
+
+	glColor3f(0, 0, 1.);
+	glBegin(GL_LINES);
+	glVertex3f(0., 0., 0.);
+	glVertex3f(0., 0., lineLen);
+	glEnd();
+
+	glLineWidth(1.);
+	glPopMatrix();
+
+	//END RENDER COORDS
+
 	enable_lights();
-	glTranslatef(-size/2., -size/2., -size/2.);
-
-    glRotatef(-g_fRotationsy, 1, 0, 0);
-    glRotatef(g_fRotations, 0, 1, 0);
+	glTranslatef(-size/2., -size/2., size/2.);
 	render_limit_mesh();
 	glDisable(GL_LIGHTING);
 	glPopMatrix();
@@ -65,10 +97,8 @@ void Scene::onDraw3D(GLV& g){
 
 
 	glPushMatrix();
-	gluLookAt(0, 0, -g_fViewDistance, 0, 0, -1, 0, 1, 0);
-	glTranslatef(-size/2., -size/2., -size/2.);
-    glRotatef(-g_fRotationsy, 1, 0, 0);
-    glRotatef(g_fRotations, 0, 1, 0);
+	gluLookAt(g_fViewDistance*cos(g_xz_theta), g_fViewDistance*sin(g_yz_theta), g_fViewDistance*sin(g_xz_theta), 0, 0, 0, 0, 1, 0);
+	glTranslatef(-size/2., -size/2., size/2.);
 	if(showCurrentMesh) render_current_mesh();
 	render_selections();
 	glPopMatrix();
@@ -79,8 +109,12 @@ void Scene::onDraw3D(GLV& g){
 bool Scene::onEvent(Event::t e, GLV& glv){
 	switch(e){
 	case Event::MouseDrag:
-		  g_fRotations = -(glv.mouse().x()) / 2.0;
-      g_fRotationsy = glv.mouse().y() / 2.0;
+		if(glv.mouse().left()){
+			g_xz_theta += glv.mouse().dx() * RADS_PER_UNIT_VELOCITY;
+			g_yz_theta += glv.mouse().dy() * RADS_PER_UNIT_VELOCITY;
+		}else if(glv.mouse().right()){
+			g_fViewDistance += glv.mouse().dy() * DIST_PER_UNIT_ROTATION;
+		}
 	return false;
 	case Event::MouseDown:	
 		//glv.mouse().setContext(this); 
@@ -92,6 +126,7 @@ bool Scene::onEvent(Event::t e, GLV& glv){
 		return false;
 	case Event::KeyUp:
 		keyb(glv.keyboard().key());
+		return false;
 	}
 	return true;	// bubble unrecognized events to parent
 }
@@ -368,10 +403,8 @@ void Scene::pick(int x, int y, PICKSTATE state){
 
 	 
 		glPushMatrix();
-		gluLookAt(0, 0, -g_fViewDistance, 0, 0, -1, 0, 1, 0);
-		glTranslatef(-size/2., -size/2., -size/2.);
-	    glRotatef(-g_fRotationsy, 1, 0, 0);
-	    glRotatef(g_fRotations, 0, 1, 0);
+		gluLookAt(g_fViewDistance*cos(g_xz_theta), g_fViewDistance*sin(g_yz_theta), g_fViewDistance*sin(g_xz_theta), 0, 0, 0, 0, 1, 0);
+		glTranslatef(-size/2., -size/2., size/2.);
 		render_picks();
 		glPopMatrix();
 

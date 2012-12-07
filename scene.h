@@ -32,6 +32,9 @@ typedef int PICKSTATE;
 #define OVER 1
 #define ON 2
 
+#define RADS_PER_UNIT_VELOCITY 0.01
+#define DIST_PER_UNIT_ROTATION 1
+
 class Scene : public View3D{
 
 public:
@@ -74,10 +77,11 @@ private:
 	MeshManager* mm;
 	unsigned int draw_subdivision;
 	GLfloat g_fViewDistance;
-	GLfloat g_fRotations;
-	GLfloat g_fRotationsy;	
 	GLfloat g_fFarPlane;
 	GLfloat g_fNearPlane;
+
+	GLfloat g_xz_theta;
+	GLfloat g_yz_theta;
 
 	NumberDialer* dx;
 	NumberDialer* dy;
