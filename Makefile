@@ -7,8 +7,11 @@ LDFLAGS=-framework GLUT -framework OpenGL -framework Cocoa -lm -lstdc++ -L/usr/l
 all: delta
 
 
-delta: main.o scene.o dmesh.o meshmanager.o deltachange.o face.o vertex.o facevertex.o $(GLVDIR)/build/Release/libGLV.a
-	$(CC) $(LDFLAGS)  main.o scene.o dmesh.o meshmanager.o deltachange.o face.o vertex.o facevertex.o  $(GLVDIR)/build/Release/libGLV.a -o delta
+delta: main.o scene.o coordscene.o dmesh.o meshmanager.o deltachange.o face.o vertex.o facevertex.o $(GLVDIR)/build/Release/libGLV.a
+	$(CC) $(LDFLAGS)  main.o scene.o coordscene.o dmesh.o meshmanager.o deltachange.o face.o vertex.o facevertex.o  $(GLVDIR)/build/Release/libGLV.a -o delta
+
+coordscene.o: coordscene.cpp coordscene.h
+	$(CC) $(CFLAGS) coordscene.cpp
 
 scene.o: scene.cpp scene.h facevertex.h vertex.h face.h ofVec3f.h
 	$(CC) $(CFLAGS) scene.cpp

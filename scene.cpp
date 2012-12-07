@@ -1,17 +1,15 @@
 	#include "scene.h"
 
 
-Scene::Scene (const Rect &r, MeshManager* m, GLfloat nearPlane, GLfloat viewDistance, 
-		NumberDialer* nd_x, NumberDialer* nd_y, NumberDialer* nd_z, NumberDialer* nd_n){
+Scene::Scene (const Rect &r, MeshManager* m, GLfloat nearPlane, GLfloat viewDistance){
+
+
+	//lets hope this calls back to the main view
+	//addCallback(Event::MouseDrag, Behavior::Unused);
 
 	//size = 0;
 	mm = m;
 	draw_subdivision = 0;
-
-	dx = nd_x;
-	dy = nd_y;
-	dz = nd_z;
-	dn = nd_n;
 
 	g_xz_theta = 3*PI/2.;
 	g_yz_theta = 0;
@@ -34,6 +32,13 @@ Scene::Scene (const Rect &r, MeshManager* m, GLfloat nearPlane, GLfloat viewDist
 
 }
 
+void Scene::setDialers(NumberDialer* x, NumberDialer* y, NumberDialer* z, NumberDialer* n){
+	nd_x = x;
+	nd_y = y; 
+	nd_z = z;
+	nd_n = n;
+}
+
 void Scene::onDraw3D(GLV& g){
 
 	glMatrixMode(GL_PROJECTION);
@@ -52,42 +57,8 @@ void Scene::onDraw3D(GLV& g){
 
     if(showLimitMesh){
     glPushMatrix();
-	gluLookAt(g_fViewDistance*cos(g_xz_theta), g_fViewDistance*sin(-g_yz_theta), g_fViewDistance*sin(g_xz_theta), 0, 0, 0, 0, 1, 0);
-
-
-	//RENDER COORDS
-    glPushMatrix();
-	//draw the frenet frame around the selected point
-	glLineWidth(2.);
-
-	float lineLen = 100;
-	ofVec3f vec;
-
-
-
-	glColor3f(1., 0, 0);
-	glBegin(GL_LINES);
-	glVertex3f(0., 0., 0.);
-	glVertex3f(lineLen, 0., 0.);
-	glEnd();
-
-	glColor3f(0, 1.,0);
-	glBegin(GL_LINES);
-	glVertex3f(0., 0., 0.);
-	glVertex3f(0., lineLen, 0.);	
-	glEnd();
-
-	glColor3f(0, 0, 1.);
-	glBegin(GL_LINES);
-	glVertex3f(0., 0., 0.);
-	glVertex3f(0., 0., lineLen);
-	glEnd();
-
-	glLineWidth(1.);
-	glPopMatrix();
-
-	//END RENDER COORDS
-
+	gluLookAt(g_fViewDistance*cos(g_xz_theta), g_fViewDistance*sin(g_yz_theta), g_fViewDistance*sin(g_xz_theta), 0, 0, 0, 0, 1, 0);
+    render_coords(-1, size);
 	enable_lights();
 	glTranslatef(-size/2., -size/2., size/2.);
 	render_limit_mesh();
@@ -128,6 +99,7 @@ bool Scene::onEvent(Event::t e, GLV& glv){
 		keyb(glv.keyboard().key());
 		return false;
 	}
+
 	return true;	// bubble unrecognized events to parent
 }
 
@@ -216,12 +188,15 @@ void Scene::render_current_mesh(){
 			glDisable(GL_LIGHTING);
 		}
 
-		glColor3f(1., 0., 0.);
+		glEnable (GL_BLEND);
+		glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glColor4f(1., 44./255., 207./255., .5);
 		glBegin(GL_LINE_LOOP);
 		glVertex3f(A.x, A.y, A.z);
 		glVertex3f(B.x, B.y, B.z);
 		glVertex3f(C.x, C.y, C.z);
 		glEnd();
+		glDisable(GL_BLEND);
 
 	}
 
@@ -268,7 +243,7 @@ void Scene::render_selections(){
 		glTranslatef(A.x, A.y, A.z);
 		
 		 if(v->getState() != OFF){
-			render_coords(v);
+			render_coords(v->getId(), pickTargetSize * 6);
 			glColor4f(.3, .5, 1., 1.);
 		 } 
 		 else{
@@ -300,44 +275,46 @@ void Scene::render_picks(){
 	}
 }
 
-void Scene::render_coords(Vertex* v){
-	
+
+void Scene::render_coords(int vid, float lineLen){
+	vector<Vertex*> vList = mm->getCurrentMesh()->getVList();
+
 
 	glPushMatrix();
 	//draw the frenet frame around the selected point
 	glLineWidth(2.);
 
-	float lineLen = pickTargetSize * 6;
 	ofVec3f vec;
 
-
-
-	glColor3f(1., 44./255., 207./255.);
+	glColor3f(1.,0,0);
 	glBegin(GL_LINES);
 	glVertex3f(0., 0., 0.);
 	glVertex3f(lineLen, 0., 0.);
 	glEnd();
 
-	glColor3f(221./255, 1., 44./255.);
+	glColor3f(0, 1., 0);
 	glBegin(GL_LINES);
 	glVertex3f(0., 0., 0.);
 	glVertex3f(0., lineLen, 0.);	
 	glEnd();
 
-	glColor3f(44./255., 249./255, 1.);
+	glColor3f(0., 0, 1.);
 	glBegin(GL_LINES);
 	glVertex3f(0., 0., 0.);
 	glVertex3f(0., 0., lineLen);
 	glEnd();
 
-	glColor3f(0., 0., 0.);
-	glBegin(GL_LINES);
-	glVertex3f(0., 0., 0.);
-	vec = v->getNormal();
-	vec *= lineLen;
-	if(mm->doFlipNormal()) vec *= -1;
-	glVertex3f(vec.x, vec.y, vec.z);
-	glEnd();
+	if(vid > -1 ){
+		Vertex* v = vList[vid-1];
+		glColor3f(0., 0., 0.);
+		glBegin(GL_LINES);
+		glVertex3f(0., 0., 0.);
+		vec = v->getNormal();
+		vec *= lineLen;
+		if(mm->doFlipNormal()) vec *= -1;
+		glVertex3f(vec.x, vec.y, vec.z);
+		glEnd();
+	}
 
 
 	glLineWidth(1.);
@@ -419,15 +396,10 @@ void Scene::pick(int x, int y, PICKSTATE state){
 }
 
 void Scene::update_dialer_values(ofVec3f delta){
- 		//for each of the selections, see if they have a delta value 
- 		// cout << dx << endl;
- 		// cout << dy << endl;
- 		// cout << dz << endl;
- 		// cout << dn << endl;
- 		// dx->setValue(delta.x);
- 		// dy->setValue(delta.y);
- 		// dz->setValue(delta.z);
- 		// dn->setValue(0);
+ 		nd_x->setValue(delta.x);
+ 		nd_y->setValue(delta.y);
+ 		nd_z->setValue(delta.z);
+ 		nd_n->setValue(0);
 }
 
 

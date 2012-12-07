@@ -8,6 +8,7 @@
 #include <glv_util.h>
 
 #include "scene.h"
+#include "coordscene.h"
 
 #include <stdio.h>
 #include <iostream>
@@ -60,6 +61,12 @@ NumberDialer* nd_x;
 NumberDialer* nd_y;
 NumberDialer* nd_z;
 NumberDialer* nd_n;
+
+void ntSceneChanged(const Notification &n){
+	NumberDialer nd = *n.receiver<NumberDialer>();
+	Scene& sc = *n.sender<Scene>();
+	cout << "Scene Changed" << endl;
+}
 
 void ntExportObj(const Notification& n){
 	Scene& sc = *n.receiver<Scene>();
@@ -194,6 +201,7 @@ void ntSetSubdivision(const Notification& n){
 
 int main (int argc, char ** argv){
 	char * filename;
+	int bar_width = 180;
 	for(int i = 0; i<argc; i++) printf("argv[%d] = %s\n", i, argv[i]);
 	if(argc > 1){
 		filename = argv[2];
@@ -213,10 +221,11 @@ int main (int argc, char ** argv){
 	}
 
 
-	Scene scene(Rect(270, 10, 400, 400), mm, g_nearPlane, g_fViewDistance, nd_x, nd_y, nd_z, nd_n);
+	Scene scene(Rect(270, 10, 400, 400), mm, g_nearPlane, g_fViewDistance);
 
+	View viewAdjustments(Rect(10,10, bar_width,400));
+	CoordScene coordScene(Rect(10, viewAdjustments.bottom()+20, bar_width, 180));
 
-	View viewAdjustments(Rect(10,10, 180,400));
 	Label labelVertexAdjustments("Vertex Adjusters", false);	
 	Label labelX("X", false);	
 	Label labelY("Y", false);	
@@ -231,8 +240,10 @@ int main (int argc, char ** argv){
 	nd_z = new NumberDialer(Rect(20), 3, 2);
 	nd_n = new NumberDialer(Rect(20), 3, 2);
 
+	scene.setDialers(nd_x, nd_y, nd_z, nd_n);
 
-	View viewScales(Rect(10,viewAdjustments.bottom()+20, 400,80));
+
+	View viewScales(Rect(10,coordScene.bottom()+20, 400,100));
 	Label labelScale("Adjust Scale", false);		
 	View v_scalexyz(Rect(0, 0, 300, 20));
 	nd_scalex = new NumberDialer(Rect(20), 3, 2, 0.01, 999);
@@ -270,9 +281,6 @@ int main (int argc, char ** argv){
 	View viewSubdivisions(Rect(20));
 	Label labelSubdivisions("Subdivision Number", false);
 	NumberDialer nd_subdivision(Rect(20), 1, 0, LIMIT_DEPTH, 0);
-
-	Label labelViewDistance("View Distance", false);
-	NumberDialer nd_viewdistance(Rect(20), 4, 2, 1000, 0);
 
 	// Set properties of Views	
 	View* views[] = {&viewAdjustments, &viewSubdivisions, &viewScales, &scene};
@@ -317,7 +325,6 @@ int main (int argc, char ** argv){
 	placer << labelVertexAdjustments << v_x << v_y << v_z << v_n 
 			<< labelSubdivisions 
 			<< nd_subdivision 
-			<< labelViewDistance << nd_viewdistance 
 			<< v_cur << v_limit << v_export;
 	placerx << nd_x << labelX;
 	placery << nd_y << labelY;
@@ -342,7 +349,7 @@ int main (int argc, char ** argv){
 	nd_n->attach(ntSetOffsetNormal, Update::Value, &scene);
 	b_cur.attach(ntSetCurrentVisability, Update::Value, &scene);
 	b_limit.attach(ntSetLimitVisability, Update::Value, &scene);
-	nd_viewdistance.attach(ntSetViewDistance, Update::Value, &scene);
+	//nd_viewdistance.attach(ntSetViewDistance, Update::Value, &scene);
 	nd_subdivision.attach(ntSetSubdivision, Update::Value, &scene);
 	b_export.attach(ntExportObj, Update::Value, &scene);
 
@@ -350,6 +357,9 @@ int main (int argc, char ** argv){
 	nd_scaley->attach(ntScaleY, Update::Value, &mm);
 	nd_scalez->attach(ntScaleZ, Update::Value, &mm);
 	b_sync.attach(ntSyncScales, Update::Value, &mm);
+
+	scene.attach(ntSceneChanged, Update::Value, &nd_x);
+
 
 	Window win(1080, 720, "Delta Change Subdivision");
 	win.setGLV(top);

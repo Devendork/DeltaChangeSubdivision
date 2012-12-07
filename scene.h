@@ -38,13 +38,12 @@ typedef int PICKSTATE;
 class Scene : public View3D{
 
 public:
-	Scene (const Rect &r=Rect(0), MeshManager* m = NULL, GLfloat nearPlane = 0, GLfloat viewDistance =0,
-		 NumberDialer* nd_x = new NumberDialer(10, 10, 10, 10), NumberDialer* nd_y= new NumberDialer(10, 10, 10, 10), 
-		 NumberDialer* nd_z= new NumberDialer(10, 10, 10, 10), NumberDialer* nd_n= new NumberDialer(10, 10, 10, 10) );
+	Scene (const Rect &r=Rect(0), MeshManager* m = NULL, GLfloat nearPlane = 0, GLfloat viewDistance =0);
+	void setDialers(NumberDialer* , NumberDialer* , NumberDialer*, NumberDialer* );
 	void render_current_mesh();
 	void render_limit_mesh();
 	void render_picks();
-	void render_coords(Vertex* v);
+	void render_coords(int , float);
 	void render_selections();
 
 	void update_dialer_values(ofVec3f delta);
@@ -83,10 +82,10 @@ private:
 	GLfloat g_xz_theta;
 	GLfloat g_yz_theta;
 
-	NumberDialer* dx;
-	NumberDialer* dy;
-	NumberDialer* dz;
-	NumberDialer* dn;
+	NumberDialer* nd_x;
+	NumberDialer* nd_y;
+	NumberDialer* nd_z;
+	NumberDialer* nd_n;
 
 	float pickTargetSize;
 
