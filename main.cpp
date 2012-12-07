@@ -74,6 +74,12 @@ void ntExportObj(const Notification& n){
 	sc.exportObj();
 }
 
+void ntToggleSymMode(const Notification& n){
+	Scene& sc = *n.receiver<Scene>();
+	Button& b = *n.sender<Button>();
+	sc.toggleSymmetryMode();
+}
+
 void ntSetCurrentVisability(const Notification& n){
 	Scene& sc = *n.receiver<Scene>();
 	Button& b = *n.sender<Button>();
@@ -258,11 +264,6 @@ int main (int argc, char ** argv){
 	Button b_sync;
 	Label label_sync("Sync", false);
 
-
-	Color c_c(1., 44./255., 207./255.);
-	Color c_m(221./255, 1., 44./255.);
-	Color c_y(44./255., 249./255, 1.);
-	Color c_k(0., 0., 0.);
 	
 	
 	View v_cur(Rect(0, 0, 200, 20));
@@ -277,6 +278,10 @@ int main (int argc, char ** argv){
 	Button b_export;
 	Label label_export("Export .OBJ", false);
 
+	View v_sym(Rect(0, 0, 200, 20));
+	Button b_sym;
+	Label label_sym("Symmetry Mode", false);
+
 
 	View viewSubdivisions(Rect(20));
 	Label labelSubdivisions("Subdivision Number", false);
@@ -289,8 +294,8 @@ int main (int argc, char ** argv){
 		views[i]->enable(KeepWithinParent);
 	}
 
-	View* noBorders[] = {&v_x, &v_y, &v_z, &v_n, &v_cur, &v_limit, &v_export, &v_scalexyz, &v_sync};
-	for(int i=0; i<9; ++i){
+	View* noBorders[] = {&v_x, &v_y, &v_z, &v_n, &v_cur, &v_limit, &v_export, &v_scalexyz, &v_sync, &v_sym};
+	for(int i=0; i<10; ++i){
 		noBorders[i]->disable(Property::DrawBorder);
 		noBorders[i]->disable(Property::DrawBack);
 	}
@@ -300,9 +305,9 @@ int main (int argc, char ** argv){
 						&b_cur, &label_cur, &b_limit, &label_limit,
 						&label_export, &labelScale, nd_scalex, nd_scaley,
 						nd_scalez, &b_sync, &label_sync, &b_export, 
-						&label_export
+						&label_export, &label_sym, &b_sym
 						};
-	for(int i=0; i<21; ++i){
+	for(int i=0; i<23; ++i){
 		inParents[i]->enable(KeepWithinParent);
 	}
 
@@ -315,6 +320,7 @@ int main (int argc, char ** argv){
 	Placer placercur(v_cur, Direction::E, Place::CL, 0,0, 10);
 	Placer placerlimit(v_limit, Direction::E, Place::CL, 0,0, 10);
 	Placer placerexport(v_export, Direction::E, Place::CL, 0,0, 10);
+	Placer placersym(v_sym, Direction::E, Place::CL, 0,0, 10);
 	Placer placerscalexyz(v_scalexyz, Direction::E, Place::CL, 0,0, 10);
 	Placer placersync(v_sync, Direction::E, Place::CL, 0,0, 10);
 
@@ -325,11 +331,12 @@ int main (int argc, char ** argv){
 	placer << labelVertexAdjustments << v_x << v_y << v_z << v_n 
 			<< labelSubdivisions 
 			<< nd_subdivision 
-			<< v_cur << v_limit << v_export;
+			<< v_sym << v_cur << v_limit << v_export;
 	placerx << nd_x << labelX;
 	placery << nd_y << labelY;
 	placerz << nd_z << labelZ;
 	placern << nd_n << labelN;
+	placersym << b_sym << label_sym;
 	placercur << b_cur << label_cur;
 	placerlimit << b_limit << label_limit;
 	placerexport << b_export << label_export;
@@ -341,6 +348,7 @@ int main (int argc, char ** argv){
 	
 	scene.stretch(1,1);
 	scene.maximize();
+
 
 	//attach notifications		
 	nd_x->attach(ntSetOffsetX, Update::Value, &scene);
@@ -357,9 +365,22 @@ int main (int argc, char ** argv){
 	nd_scaley->attach(ntScaleY, Update::Value, &mm);
 	nd_scalez->attach(ntScaleZ, Update::Value, &mm);
 	b_sync.attach(ntSyncScales, Update::Value, &mm);
+	b_sym.attach(ntToggleSymMode, Update::Value, &scene);
 
-	scene.attach(ntSceneChanged, Update::Value, &nd_x);
 
+	Color c_c(1., 44./255., 207./255.);
+	Color c_m(221./255, 1., 44./255.);
+	Color c_y(44./255., 249./255, 1.);
+	Color c_r(1.,0, 0);
+	Color c_g(0, 1., 0);
+	Color c_b(0, 0, 1.);
+
+	Color c_k(0., 0., 0.);
+	
+	nd_x->cloneStyle().colors().set(c_r);
+	nd_y->cloneStyle().colors().set(c_g);
+	nd_z->cloneStyle().colors().set(c_b);
+	nd_n->cloneStyle().colors().set(c_k);
 
 	Window win(1080, 720, "Delta Change Subdivision");
 	win.setGLV(top);

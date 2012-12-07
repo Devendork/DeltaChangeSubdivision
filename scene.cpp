@@ -26,6 +26,8 @@ Scene::Scene (const Rect &r, MeshManager* m, GLfloat nearPlane, GLfloat viewDist
 
 	showCurrentMesh = TRUE;
 	showLimitMesh = TRUE;
+	sym_mode = FALSE;
+
 	pickTargetSize = size / 100;
 
 	pos(r.left(), r.top());
@@ -128,6 +130,9 @@ void Scene::exportObj(){
 	 cout << "File Exported!" << endl;
 }
 
+void Scene::toggleSymmetryMode(){
+	sym_mode = !sym_mode;
+}
 
 void Scene::toggleLimitMeshVisibility(){
 	showLimitMesh = !showLimitMesh;
@@ -174,9 +179,16 @@ void Scene::render_current_mesh(){
 		ofVec3f C = vList[((*it)->getC()->id)-1]->getPoint();
 		ofVec3f n = (*it)->getFaceNormal();
         
-        if(!showLimitMesh){
-			enable_lights();    
-			glColor4f(1., 0., 0., .5);
+        if(!showLimitMesh || sym_mode){
+			if(sym_mode){
+				glEnable(GL_BLEND);
+				glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);				
+				glColor4f(1., 44./255., 207./255., .5);
+
+		    }else{ 
+		    	enable_lights();    
+				glColor4f(1., 0., 0., .5);
+	        }
 	        glBegin(GL_TRIANGLES);
 			glNormal3f(n.x, n.y, n.z);
 			glVertex3f(A.x, A.y, A.z);
@@ -185,18 +197,24 @@ void Scene::render_current_mesh(){
 			glNormal3f(n.x, n.y, n.z);
 			glVertex3f(C.x, C.y, C.z);
 			glEnd();
-			glDisable(GL_LIGHTING);
+			
+			if(sym_mode) glDisable(GL_BLEND);
+			else glDisable(GL_LIGHTING);
 		}
 
-		glEnable (GL_BLEND);
-		glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glColor4f(1., 44./255., 207./255., .5);
+		if(sym_mode){
+			glColor4f(1., 1., 1., 1);
+		}else{
+			glEnable (GL_BLEND);
+			glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glColor4f(1., 44./255., 207./255., .5);
+		}
 		glBegin(GL_LINE_LOOP);
 		glVertex3f(A.x, A.y, A.z);
 		glVertex3f(B.x, B.y, B.z);
 		glVertex3f(C.x, C.y, C.z);
 		glEnd();
-		glDisable(GL_BLEND);
+		if(!sym_mode) glDisable(GL_BLEND);
 
 	}
 

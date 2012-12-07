@@ -65,7 +65,7 @@ public:
 	void adjust_vertex(ofVec3f amount);
 	void adjust_vertex_by_normal(float amount);
 	void setViewDistance(float f);
-
+	void toggleSymmetryMode();
 
 	virtual void onDraw3D(GLV& g);
 	virtual bool onEvent(Event::t e, GLV& glv);
@@ -91,6 +91,7 @@ private:
 
 	BOOL showCurrentMesh;
 	BOOL showLimitMesh;
+	BOOL sym_mode;
 
 
 
