@@ -19,6 +19,7 @@
 #include <string>
 
 #include <set>
+#include <map>
 
 using namespace glv;
 using namespace std;
@@ -63,6 +64,9 @@ public:
 	double total_distance(Face*);
 	vector<int> selected_vertices();
 	void keyb(int key);
+
+	void flood_planar_faces(int, map<int, Face*>& );
+	bool close_enough(ofVec3f, ofVec3f);
 
 	void toggleLimitMeshVisibility();
 	void toggleCurrentMeshVisibility();

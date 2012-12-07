@@ -547,15 +547,19 @@ void Scene::change_pick_vertices(std::set<int> selections, PICKSTATE state){
 	if(count_ons == 0) update_dialer_values(ofVec3f(0,0,0));
 }
 
-void Scene::change_pick_faces(std::set<int> selections, PICKSTATE state){
-	vector<Face*> faces = mm->getCurrentMesh()->getFaces();
+void Scene::change_pick_faces(std::set<int> picks, PICKSTATE state){
 	int selected_id = -1;
+	map<int, Face*> selections;
 
-	if(selections.size() > 0){
-		Face* closest = closest_face(selections);
+	if(picks.size() > 0){
+		Face* closest = closest_face(picks);
 		selected_id = closest->getId();
+
+	    flood_planar_faces(selected_id, selections);
+		cout << "Selections size " << selections.size() << endl; 
 	}
 
+	vector<Face*> faces = mm->getCurrentMesh()->getFaces();
 	for(vector<Face*> :: iterator it = faces.begin(); it != faces.end(); it++){
 		Face* f = *it;
 
@@ -563,12 +567,12 @@ void Scene::change_pick_faces(std::set<int> selections, PICKSTATE state){
 		if(state == OVER){
 			switch(f->getState()){
 				case OFF:
-					if(selected_id == f->getId()){
+					if(selections.find(f->getId()) != selections.end()){
 						f->setState(OVER);
 					} 
 				break;
 				case OVER:
-					if(selected_id != f->getId()){
+					if(selections.find(f->getId()) == selections.end()){
 						f->setState(OFF);
 					} 
 				break;
@@ -582,6 +586,47 @@ void Scene::change_pick_faces(std::set<int> selections, PICKSTATE state){
 
 	}
 
+}
+
+//starting at this face flood outward to all planar faces 
+//push each of their ids into the set
+void Scene::flood_planar_faces(int fid, map<int, Face*>& ids){
+	vector<Face*> faces = mm->getCurrentMesh()->getFaces();
+
+	map<int, Face* > to_check;
+	map<int, Face* > checked;
+	to_check.insert(pair<int, Face*>(fid, faces[fid-1]));
+
+
+	while(to_check.size() > 0){
+		int id = (*to_check.begin()).first;
+		ids.insert(pair<int, Face*>(id, faces[id-1]));
+		checked.insert(pair<int, Face*>(id, faces[id-1]));
+
+		Face* f = faces[id-1];
+		for(int i = 0; i < 3; i++){
+			Face* n;
+			if(i == 0) n = f->getA()->getNext();
+			else if(i == 1) n = f->getB()->getNext();
+			else n = f->getC()->getNext();
+
+			if(checked.find(n->getId()) != checked.end()) continue;
+			if(to_check.find(n->getId()) != to_check.end()) continue;
+			if(!close_enough(f->getFaceNormal(), n->getFaceNormal())) continue;
+			to_check.insert(pair<int, Face*> (n->getId(), n)); 
+
+		}
+
+		to_check.erase(id);
+
+	}
+
+}
+
+bool Scene::close_enough(ofVec3f a, ofVec3f b){
+	ofVec3f diff = a-b;
+	if(diff.squareLength() < .01) return true;
+	return false;
 }
 
 
