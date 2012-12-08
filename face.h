@@ -54,10 +54,10 @@ public:
 	FaceVertex* ccwNeighbor(int);
 	void setFaceNormal(ofVec3f);
 	ofVec3f getFaceNormal();
-	
+	void setId(int );
 	PICKSTATE getState();
 	void setState(PICKSTATE);
-
+	void resetFaceVertexNexts();
 	void printData();
 
 private:

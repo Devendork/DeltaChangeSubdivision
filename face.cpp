@@ -20,6 +20,10 @@ Face :: Face(int i, int v1, int v2, int v3){
 	
 }
 
+void Face::setId(int i){
+	id = i;
+}
+
 void Face::printData(){
 
 	cout << "Face Id: " << id << " is [" << a->id << ", " << b->id << ", " << c->id << "] divided? = " << divided << endl;
@@ -54,7 +58,6 @@ FaceVertex* Face::getC(){
 }
 
 
-
 void Face::setA(FaceVertex* fv){
 	a = fv;
 }
@@ -65,6 +68,12 @@ void Face::setB(FaceVertex* fv){
 
 void Face::setC(FaceVertex* fv){
 	c = fv;
+}
+
+void Face::resetFaceVertexNexts(){
+	a->resetHasNext();
+	b->resetHasNext();
+	c->resetHasNext();
 }
 
 void Face::setANext(Face* f){

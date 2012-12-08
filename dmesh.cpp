@@ -3,15 +3,61 @@
 
 //this constructs an initial mesh from a data file
 Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f){
+	stage = s;
 	box_min.set(10000, 10000, 10000);
 	box_max.set(-10000, -10000, -10000);
 	stage = s;
 	
 	for(vector<Face*> :: iterator it = f.begin(); it != f.end(); it++) faces.push_back(*it);
+	for(vector<Vertex*> :: iterator it = v.begin(); it != v.end(); it++) vList.push_back(*it);
+
+	constructTopology();
+}
+
+
+
+Mesh::Mesh(int s, Mesh* old, vector<Delta*> changes){
+	stage = s;
+	
+	vector<Face*> f = old->getFaces();
+	vector<Vertex*> v = old->getVList();
+	
+	for(vector<Face*> :: iterator it = f.begin(); it != f.end(); it++) faces.push_back(*it);
 	for(vector<Vertex*> :: iterator it = v.begin(); it != v.end(); it++){
+		vList.push_back(new Vertex(*it));
+	} 
+	
+	subdivide();
+	addModifications(changes);
+	setFacePointers();
+	updateNormals();
+}
+
+void Mesh::constructTopology(){
+
+
+	cout << "# begin vertices" << endl;
+  	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++){
+  	 	ofVec3f p = (*it)->getPoint();
+  	 	cout << "v " << (*it)->getId() << ": " << p.x << " " << p.y << " " << p.z << endl;
+  	 }
+  	 
+  	cout << endl << "# begin faces" << endl;
+  	for(vector<Face*> :: iterator it = faces.begin(); it != faces.end(); it++){
+  	 	cout << "f " << (*it)->getA()->getId() << " " << (*it)->getB()->getId() << " " << (*it)->getC()->getId()<< endl;
+  	 }
+
+
+	box_min.set(10000, 10000, 10000);
+	box_max.set(-10000, -10000, -10000);
+	
+	vector<Face*> f;
+	f.assign(faces.begin(), faces.end());
+
+	//update Bounding box
+	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++){
 		updateMins(box_min, (*it)->getPoint());
 		updateMaxs(box_max, (*it)->getPoint());
-		vList.push_back(*it);
 	}
 	
 	//every edge is shared by two faces
@@ -60,7 +106,6 @@ Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f){
 						cout << "found: " << (*it)->getA()->id << ", " << (*it)->getB()->id << ", " << (*it)->getC()->id << endl;
 					}
 				}
-			
 			}else if (num_found == 0) {
 				cout << "nothing found along " << from->getId() << " to " << to->getId() << endl;
 				cout << "on triangle : " << face->getA()->id << ", " << face->getB()->id << ", " << face->getC()->id << endl;
@@ -71,30 +116,9 @@ Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f){
 		
 	}
 	
+	cout << "Finished Loop " << endl;
 	//this is only done once here after the first mesh is initialized
 	updateIncidentEdgeData();
-	setFacePointers();
-	updateNormals();
-
-
-	cout << "Initial Mesh Loaded" << endl;
-}
-
-
-
-Mesh::Mesh(int s, Mesh* old, vector<Delta*> changes){
-	stage = s;
-	
-	vector<Face*> f = old->getFaces();
-	vector<Vertex*> v = old->getVList();
-	
-	for(vector<Face*> :: iterator it = f.begin(); it != f.end(); it++) faces.push_back(*it);
-	for(vector<Vertex*> :: iterator it = v.begin(); it != v.end(); it++){
-		vList.push_back(new Vertex(*it));
-	} 
-	
-	subdivide();
-	addModifications(changes);
 	setFacePointers();
 	updateNormals();
 }
@@ -131,9 +155,83 @@ void Mesh::updateNormals(){
 	for(vector<Vertex*>::iterator it = vList.begin(); it != vList.end(); it++) (*it)->setNormal(computeVertexNormal(*it));
 }
 
+bool Mesh::closeEnough(ofVec3f a, ofVec3f b){
+	ofVec3f diff = a-b;
+	if(diff.squareLength() < .01) return true;
+	return false;
+}
 
-void Mesh::mirrorMesh(vector<int> faces){
+void Mesh::mirrorMesh(vector<int> planar_faces){
+	vector<Face*> mirror_faces;
+	vector<Vertex*> mirror_vertices;
+	vector<Face*> updated_faces;
 
+	std::set<int> planar_set;
+	for(vector<int>::iterator it = planar_faces.begin(); it != planar_faces.end(); it++) planar_set.insert(*it);
+
+	Face* pface = faces[(*planar_faces.begin())-1];
+	ofVec3f n = pface->getFaceNormal();
+	n.normalize();
+
+
+
+	//first just lay across the vertices
+	for(
+		vector<Vertex*>::iterator it = vList.begin(); it != vList.end(); it++){
+		ofVec3f p = (*it)->getPoint();
+		double distance = n.x*p.x + n.y*p.y + n.z*p.z;
+		ofVec3f pos = p + 2*distance * -1*n; //starting from the original the distance in the other direction
+
+		int vid = vList.size()+mirror_vertices.size()+1;
+
+		if(!closeEnough((*it)->getPoint(), pos)){
+			mirror_vertices.push_back(new Vertex(vid, pos.x, pos.y, pos.z));
+			twin_vertices.insert(pair<int, int> ((*it)->getId(), vid));
+		 }else{
+		 	twin_vertices.insert(pair<int, int> ((*it)->getId(), (*it)->getId())); //link it to itself
+		 }
+		 cout << endl;
+	}
+	vList.insert(vList.end(), mirror_vertices.begin(), mirror_vertices.end());
+
+	//find any additional planar triangles 
+	for(vector<Face*>::iterator it = faces.begin(); it != faces.end(); it++){
+		if(planar_set.count((*it)->getId()) > 0) continue;
+		int a = (*it)->getA()->getId();
+		int b = (*it)->getB()->getId();
+		int c = (*it)->getC()->getId();
+		if(twin_vertices[a] == a && twin_vertices[b] == b && twin_vertices[c] == c) planar_set.insert((*it)->getId());
+		
+	}
+
+	//remove any triangles that lie on the mirror plane
+   	for(vector<Face*>::iterator it = faces.begin(); it != faces.end(); it++){
+   		if(planar_set.count((*it)->getId()) == 0) updated_faces.push_back(*it);
+   	}
+
+   	//point faces to the new set that doesn't have the planar faces in it
+   	faces.clear();
+   	faces.assign(updated_faces.begin(), updated_faces.end());
+
+	//make sure the face ids match their indices into the vector
+	for(int i = 0; i < faces.size(); i++) faces[i]->setId(i+1);
+	
+
+	//now replicate remaining faces with new vertex values
+	for(vector<Face*>::iterator it = faces.begin(); it != faces.end(); it++){
+		int a = (*it)->getA()->getId();
+		int b = (*it)->getB()->getId();
+		int c = (*it)->getC()->getId();
+
+		(*it)->resetFaceVertexNexts(); //this will make it so that it will look for connections
+
+		int fid = faces.size()+mirror_faces.size()+1;
+		Face* n_face = new Face(fid, twin_vertices[b], twin_vertices[a], twin_vertices[c]); //flip to make ccw
+		mirror_faces.push_back(n_face);
+	}
+
+	faces.insert(faces.end(), mirror_faces.begin(), mirror_faces.end());
+	constructTopology();
 }
 
 void Mesh::updateIncidentEdgeData(){
@@ -270,37 +368,10 @@ void Mesh::subdivide(){
 }
 
 
-
-// //take the vertex along this edge and replace it according to zorins rules
-// void Mesh::placeVertex(Face* f, FaceVertex* A, FaceVertex* B, Vertex* v){
-// 	cout << "check A: " << vList[(A->id)- 1]->getIncident() << ", B: " << vList[(B->id)- 1]->getIncident() << endl;
-
-// 	if(vList[(A->id)- 1]->getIncident() == 6 && vList[(B->id)- 1]->getIncident() ==6){
-// 		cout << "Normal Scheme" << endl;
-// 		butterflyScheme(f, A, B, v);
-// 	}else if (vList[(A->id)- 1]->getIncident() != 6 && vList[(B->id)- 1]->getIncident() !=6) {
-// 		cout << "2 ExtraOrdinary from " <<A->id << " to " << B->id << endl;
-
-// 		ofVec3f v1 = extraordinaryVertexValue(f, A);
-// 		ofVec3f v2 = extraordinaryVertexValue(f, B);
-// 		v->setPoint((v1+v2)/2);
-// 	}else if(vList[(A->id)- 1]->getIncident() != 6 && vList[(B->id)- 1]->getIncident() ==6){
-// 		cout << "A ExtraOrdinary from " << A->id << " to " << B->id << endl;
-// 		v->setPoint(extraordinaryVertexValue(f, A));
-		
-// 	}else if(vList[(A->id)- 1]->getIncident() == 6 && vList[(B->id)- 1]->getIncident() !=6){
-// 		cout << "B ExtraOrdinary from " << A->id << " to " << B->id << endl;
-// 		v->setPoint(extraordinaryVertexValue(f, B));
-// 	}else {
-// 		assert(0);
-// 	}
-// }
-
 ofVec3f Mesh::extraordinaryVertexValue(Face* f, FaceVertex* A){
 	
 	int vid = A->id;
 	unsigned int K = vList[vid - 1]->getIncident();
-	int ni;
 	vector<ofVec3f> s;
 	vector<double> weights;
 	Face* fn;
@@ -410,54 +481,6 @@ ofVec3f Mesh::loopEdgeValue(Face* f, FaceVertex* A, FaceVertex* B, Vertex* v){
 }
 
 
-
-//
-void Mesh::butterflyScheme(Face* f, FaceVertex* A, FaceVertex* B, Vertex* v){
-	weight = 0;
-	
-	FaceVertex* C = f->getOtherVertex(A->id, B->id);
-	FaceVertex* D = (B->getNext())->getOtherVertex(A->id, B->id);
-	
-//	cout << "A: "<< A->id <<" B: "<< B->id << " C: "<< C->id << " D: " << D->id << endl;
-	
-	
-	FaceVertex* E = A->getNext()->cwNeighbor(A->id);
-	FaceVertex* F = A->getNext()->getFaceVertexId(A->getId())->getNext()->cwNeighbor(A->getId());
-	FaceVertex* G = D->getNext()->ccwNeighbor(A->id);
-	
-//	cout << "E: "<< E->id <<" F: "<< F->id << " G: " << G->id << endl;
-
-	
-	FaceVertex* nB = B->getNext()->getFaceVertexId(B->getId());
-	FaceVertex* H = nB->getNext()->cwNeighbor(B->id);
-	FaceVertex* I = nB->getNext()->getFaceVertexId(B->getId())->getNext()->cwNeighbor(B->getId());
-	FaceVertex* J = C->getNext()->ccwNeighbor(B->id);
-//	cout << "H: "<< H->id <<" I: "<< I->id << " J: " << J->id << endl;
-
-	
-	ofVec3f va1 = (vList[(A->id)-1])->getPoint();
-	ofVec3f va2 = (vList[(B->id)-1])->getPoint();
-	
-	ofVec3f vb1 = (vList[(C->id)-1])->getPoint();
-	ofVec3f vb2 = (vList[(D->id)-1])->getPoint();
-	
-	ofVec3f vc1 = (vList[(E->id)-1])->getPoint();
-	ofVec3f vc2 = (vList[(G->id)-1])->getPoint();
-	ofVec3f vc3 = (vList[(H->id)-1])->getPoint();
-	ofVec3f vc4 = (vList[(J->id)-1])->getPoint();
-	
-	ofVec3f vd1 = (vList[(F->id)-1])->getPoint();
-	ofVec3f vd2 = (vList[(I->id)-1])->getPoint();
-	
-	float wa = 1.f/2.f;
-	float wb = 1.f/8.f + 2.*weight;
-	float wc = -1.f/16.f-weight;
-	float wd = weight;
-	
-	ofVec3f nv = wa*(va1+va2) + wb*(vb1+vb2) + wc*(vc1+vc2+vc3+vc4) + wd*(vd1+vd2);
-	v->setPoint(nv);
-	
-}
 
 
 Vertex* Mesh::getOrMakeVertex(Face* f, FaceVertex* from, FaceVertex* to){

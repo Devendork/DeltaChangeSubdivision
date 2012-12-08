@@ -15,6 +15,10 @@ FaceVertex :: FaceVertex(int i){
 	hasnext = false;
 }
 
+void FaceVertex::resetHasNext(){
+	hasnext = false;
+}
+
 Face* FaceVertex::getNext(){
 	return next;
 }

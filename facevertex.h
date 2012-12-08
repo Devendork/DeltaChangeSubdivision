@@ -13,6 +13,7 @@ public:
 	Face* getNext();
 	void setNext(Face*);
 	bool hasNext();
+	void resetHasNext();
 	Face* getFace();
 	void setFace(Face*);
 	void reset();

@@ -13,6 +13,7 @@ using namespace std;
 #include <vector>
 #include <set>
 #include <stack>
+#include <map>
 
 #include <stdio.h>
 #include <iostream>
@@ -46,16 +47,13 @@ public:
 	int  getVertexOnEdgeId(int , int );
 	void connectEdgeFaces(Face* , Face* , int , int , int );
 	Vertex* getOrMakeVertex(Face*, FaceVertex* , FaceVertex* );
-	//void placeVertex(Face*, FaceVertex*, FaceVertex*, Vertex*);
 	void updateIncidentEdgeData();
-	void butterflyScheme(Face*, FaceVertex*, FaceVertex*, Vertex*);
 	ofVec3f extraordinaryVertexValue(Face* , FaceVertex* );
 	ofVec3f loopEdgeValue(Face* f, FaceVertex* A, FaceVertex* B, Vertex* v);
 	ofVec3f loopVertexValue(Face* f, FaceVertex* A);
 	ofVec3f computeFaceNormal(Face* f);
 	ofVec3f computeVertexNormal(Vertex* );
 	void updateNormals();
-	//void addOffsets(vector<Delta*> changes);
 	void addModifications(vector<Delta*> changes);
 	void resetVariables();
 	ofVec3f getBoxMin();
@@ -66,9 +64,12 @@ public:
 	void setFacePointers();
 	void applyScaling(ofVec3f);
 	void mirrorMesh(vector<int>);
+	void constructTopology();
 
 
 private:
+	bool closeEnough(ofVec3f a, ofVec3f b);
+
 	int stage;
 	vector<Vertex*> vList; //all vertexes from 
 	vector<Face*> faces;
@@ -77,6 +78,7 @@ private:
 	float weight;
 	ofVec3f box_min;
 	ofVec3f box_max;
+	map<int, int> twin_vertices; //<a map from the orignial vertex to it's mirror vertex >>
 
 
 };

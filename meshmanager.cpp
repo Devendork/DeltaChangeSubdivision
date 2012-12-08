@@ -252,6 +252,7 @@ int MeshManager::getStageFace(int stage, vector<int> faces){
 }
 
 
+
 void MeshManager::applyMirroring(vector<int> faces){
 	getOrMakeSymDelta(current, faces);
 	updateMeshes(current);
