@@ -40,18 +40,18 @@ Mesh* MeshManager::loadMesh(){
 	vlist.push_back(new Vertex(8, 0, 100, -100));
 	
 	vector<Face*> faces;
-	faces.push_back(new Face(1, 1, 4, 3));
-	faces.push_back(new Face(2, 2, 1, 3));
-	faces.push_back(new Face(3, 4, 1, 8));
-	faces.push_back(new Face(4, 1, 5, 8));
-	faces.push_back(new Face(5, 4, 8, 7));
-	faces.push_back(new Face(6, 3, 4, 7));
-	faces.push_back(new Face(7, 2, 3, 7));
-	faces.push_back(new Face(8, 2, 7, 6));
-	faces.push_back(new Face(9, 7, 8, 5));
-	faces.push_back(new Face(10,7, 5, 6));
-	faces.push_back(new Face(11,6, 5, 1));
-	faces.push_back(new Face(12, 6, 1, 2));
+	faces.push_back(new Face(1, 1, 3, 4));
+	faces.push_back(new Face(2, 2, 3, 1));
+	faces.push_back(new Face(3, 4, 8, 1));
+	faces.push_back(new Face(4, 1, 8, 5));
+	faces.push_back(new Face(5, 4, 7, 8));
+	faces.push_back(new Face(6, 3, 7, 4));
+	faces.push_back(new Face(7, 2, 7, 3));
+	faces.push_back(new Face(8, 2, 6, 7));
+	faces.push_back(new Face(9, 7, 5, 8));
+	faces.push_back(new Face(10,7, 6, 5));
+	faces.push_back(new Face(11,6, 1, 5));
+	faces.push_back(new Face(12, 6, 2, 1));
 
 
 	for(vector<Vertex*> :: iterator it = vlist.begin(); it != vlist.end(); it++){
@@ -254,6 +254,7 @@ int MeshManager::getStageFace(int stage, vector<int> faces){
 
 
 void MeshManager::applyMirroring(vector<int> faces){
+	cout << "Get or make sym delta with " << faces.size() << "Faces" << endl;
 	getOrMakeSymDelta(current, faces);
 	updateMeshes(current);
 
@@ -389,7 +390,7 @@ double MeshManager::getBoxSize(){
 }
 
 
-bool MeshManager::doFlipNormal(){
+bool MeshManager::hasFile(){
 	return hasfile;
 }
 

@@ -2,11 +2,7 @@
 
 
 Scene::Scene (const Rect &r, MeshManager* m, GLfloat nearPlane, GLfloat viewDistance){
-
-
-	//lets hope this calls back to the main view
-	//addCallback(Event::MouseDrag, Behavior::Unused);
-
+	
 	//size = 0;
 	mm = m;
 	draw_subdivision = 0;
@@ -19,7 +15,7 @@ Scene::Scene (const Rect &r, MeshManager* m, GLfloat nearPlane, GLfloat viewDist
 
 	cout << size << endl;
 
-	if(!mm->doFlipNormal()) g_fViewDistance = viewDistance;
+	if(!mm->hasFile()) g_fViewDistance = viewDistance;
 	else g_fViewDistance = size*2 + min.z;
 	g_fNearPlane = nearPlane;
 	g_fFarPlane = size*size;
@@ -248,8 +244,6 @@ void Scene::render_limit_mesh(){
 		ofVec3f C = vList[((*it)->getC()->id)-1]->getPoint();
 		ofVec3f n = (*it)->getFaceNormal();
 
-		if(mm->doFlipNormal()) n *= -1;
-
 		glBegin(GL_TRIANGLES);
 		glNormal3f(n.x, n.y, n.z);
 		glVertex3f(A.x, A.y, A.z);
@@ -374,7 +368,6 @@ void Scene::render_coords(int vid, float lineLen){
 		glVertex3f(0., 0., 0.);
 		vec = v->getNormal();
 		vec *= lineLen;
-		if(mm->doFlipNormal()) vec *= -1;
 		glVertex3f(vec.x, vec.y, vec.z);
 		glEnd();
 	}
@@ -555,6 +548,8 @@ void Scene::change_pick_faces(std::set<int> picks, PICKSTATE state){
 		Face* closest = closest_face(picks);
 		selected_id = closest->getId();
 	    flood_planar_faces(selected_id, selections);
+
+	    cout << "Selections size " << selections.size() << endl;
 	}
 
 	vector<Face*> faces = mm->getCurrentMesh()->getFaces();
@@ -583,6 +578,7 @@ void Scene::change_pick_faces(std::set<int> picks, PICKSTATE state){
 		if(selections.size() > 0){
 			vector<int> fids;
 			for(map<int, Face*> :: iterator it = selections.begin(); it != selections.end(); it++) fids.push_back((*it).first);
+				cout << "Face Ids size " << fids.size() << endl;
 			 mm->applyMirroring(fids);
 		}
 	}

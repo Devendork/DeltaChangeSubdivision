@@ -33,7 +33,7 @@ public:
 	void printChanges();
  	int getCurrentMeshLevel();
  	double getBoxSize();
- 	bool doFlipNormal();
+ 	bool hasFile();
  	ofVec3f getMinPoint();
 	ofVec3f getVertexDeltaValue(int i);
 	void setScaleX(float f);

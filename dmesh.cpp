@@ -11,6 +11,15 @@ Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f){
 	for(vector<Face*> :: iterator it = f.begin(); it != f.end(); it++) faces.push_back(*it);
 	for(vector<Vertex*> :: iterator it = v.begin(); it != v.end(); it++) vList.push_back(*it);
 
+
+	box_min.set(10000, 10000, 10000);
+	box_max.set(-10000, -10000, -10000);
+	
+	//update Bounding box
+	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++){
+		updateMins(box_min, (*it)->getPoint());
+		updateMaxs(box_max, (*it)->getPoint());
+	}
 	constructTopology();
 }
 
@@ -48,17 +57,17 @@ void Mesh::constructTopology(){
   	 }
 
 
-	box_min.set(10000, 10000, 10000);
-	box_max.set(-10000, -10000, -10000);
+	// box_min.set(10000, 10000, 10000);
+	// box_max.set(-10000, -10000, -10000);
 	
 	vector<Face*> f;
 	f.assign(faces.begin(), faces.end());
 
 	//update Bounding box
-	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++){
-		updateMins(box_min, (*it)->getPoint());
-		updateMaxs(box_max, (*it)->getPoint());
-	}
+	// for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++){
+	// 	updateMins(box_min, (*it)->getPoint());
+	// 	updateMaxs(box_max, (*it)->getPoint());
+	// }
 	
 	//every edge is shared by two faces
 	while(f.size() > 0){
@@ -166,33 +175,44 @@ void Mesh::mirrorMesh(vector<int> planar_faces){
 	vector<Vertex*> mirror_vertices;
 	vector<Face*> updated_faces;
 
+
 	std::set<int> planar_set;
-	for(vector<int>::iterator it = planar_faces.begin(); it != planar_faces.end(); it++) planar_set.insert(*it);
+	for(vector<int>::iterator it = planar_faces.begin(); it != planar_faces.end(); it++){
+		planar_set.insert(*it);
+		Face* pf = faces[(*it)-1];
+		cout << "Planar Face: " <<  pf->getId() << " : " << pf->getA()->getId() << " " << pf->getB()->getId() << " " << pf->getC()->getId() << endl;
+	} 
 
 	Face* pface = faces[(*planar_faces.begin())-1];
+	ofVec3f o = vList[pface->getA()->getId()-1]->getPoint(); //get a point on this plane
 	ofVec3f n = pface->getFaceNormal();
-	n.normalize();
-
-
-
+	double w = -(n.x * o.x) - (n.y * o.y) - (n.z * o.z);
+	
 	//first just lay across the vertices
 	for(
 		vector<Vertex*>::iterator it = vList.begin(); it != vList.end(); it++){
 		ofVec3f p = (*it)->getPoint();
-		double distance = n.x*p.x + n.y*p.y + n.z*p.z;
+		//cout << "Compare "<< (*it)->getId() << " Point " << p.x << " " << p.y << " " << p.z << endl;
+
+		double distance = n.x*p.x + n.y*p.y + n.z*p.z + w;
+		//cout << "Distance " << distance << endl;
 		ofVec3f pos = p + 2*distance * -1*n; //starting from the original the distance in the other direction
 
 		int vid = vList.size()+mirror_vertices.size()+1;
 
-		if(!closeEnough((*it)->getPoint(), pos)){
+		//cout << "With New Pos " << pos.x << " " << pos.y << " " << pos.z << endl << endl;
+
+		if(!closeEnough(p, pos)){
 			mirror_vertices.push_back(new Vertex(vid, pos.x, pos.y, pos.z));
 			twin_vertices.insert(pair<int, int> ((*it)->getId(), vid));
 		 }else{
 		 	twin_vertices.insert(pair<int, int> ((*it)->getId(), (*it)->getId())); //link it to itself
+		 	cout << "pointing " << (*it)->getId() << " to self " << endl;
 		 }
-		 cout << endl;
 	}
 	vList.insert(vList.end(), mirror_vertices.begin(), mirror_vertices.end());
+
+	cout << endl << "Size of Planar Set Pre: " << planar_set.size() << endl;
 
 	//find any additional planar triangles 
 	for(vector<Face*>::iterator it = faces.begin(); it != faces.end(); it++){
@@ -200,20 +220,32 @@ void Mesh::mirrorMesh(vector<int> planar_faces){
 		int a = (*it)->getA()->getId();
 		int b = (*it)->getB()->getId();
 		int c = (*it)->getC()->getId();
-		if(twin_vertices[a] == a && twin_vertices[b] == b && twin_vertices[c] == c) planar_set.insert((*it)->getId());
+		if(twin_vertices[a] == a && twin_vertices[b] == b && twin_vertices[c] == c){
+			cout << "Face Id: " << (*it)->getId() << endl;
+			cout << "Vertices: " << a << ", " << b << ", " << c << endl;
+			cout << "Twin Vertices: " << twin_vertices[a] << ", " << twin_vertices[b] << ", " << twin_vertices[c] << endl;
+			planar_set.insert((*it)->getId());
+		} 
 		
 	}
 
+	cout << "Size of Planar Set Post " << planar_set.size() << endl;
+
+
 	//remove any triangles that lie on the mirror plane
    	for(vector<Face*>::iterator it = faces.begin(); it != faces.end(); it++){
+   		cout << (*it)->getId()  << " In Planar Set? " << (planar_set.count((*it)->getId()) == 0) << endl;
    		if(planar_set.count((*it)->getId()) == 0) updated_faces.push_back(*it);
    	}
+
+   	cout << "Removed " << faces.size() - updated_faces.size() << " Faces " << endl;
 
    	//point faces to the new set that doesn't have the planar faces in it
    	faces.clear();
    	faces.assign(updated_faces.begin(), updated_faces.end());
 
 	//make sure the face ids match their indices into the vector
+	cout << faces.size() << " After Removals " << endl;
 	for(int i = 0; i < faces.size(); i++) faces[i]->setId(i+1);
 	
 
@@ -230,6 +262,7 @@ void Mesh::mirrorMesh(vector<int> planar_faces){
 		mirror_faces.push_back(n_face);
 	}
 
+	assert(mirror_faces.size() == faces.size());
 	faces.insert(faces.end(), mirror_faces.begin(), mirror_faces.end());
 	constructTopology();
 }

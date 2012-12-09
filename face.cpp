@@ -172,6 +172,7 @@ int Face::getVertexOnEdgeId(int from, int to){
 }	
 
 void Face::setFaceNormal(ofVec3f normal){
+	normal *= -1;
 	n.set(normal);
 }
 
