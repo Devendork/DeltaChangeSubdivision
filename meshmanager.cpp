@@ -171,28 +171,28 @@ void MeshManager::updateMeshScaling(ofVec3f oldScale){
 void MeshManager::updateMeshes(unsigned int stage){
 
 	int num_meshes = meshes.size();
-	meshes.clear();
+	// meshes.clear();
 
-	if(hasfile) meshes.push_back(loadObj());
-	else meshes.push_back(loadMesh());
+	// if(hasfile) meshes.push_back(loadObj());
+	// else meshes.push_back(loadMesh());
 
-	for(int i = 1; i < num_meshes; i++){
-		Mesh* prev = meshes[i-1];
-		prev->resetVariables();
-		meshes.push_back(new Mesh(i, prev, makeDeltaVector(i)));
-	}
-
-
-	// for(int i = 0; i <= stage; i++){
-	// 	meshes[i]->addModifications(makeDeltaVector(i));
-	// }
-
-	// //recalculate all meshes after the current stage mesh from scratch
-	// for(int i = stage+1; i < num_meshes; i++){
+	// for(int i = 1; i < num_meshes; i++){
 	// 	Mesh* prev = meshes[i-1];
 	// 	prev->resetVariables();
-	// 	meshes[i] = new Mesh(i, prev, makeDeltaVector(i));
+	// 	meshes.push_back(new Mesh(i, prev, makeDeltaVector(i)));
 	// }
+
+
+	for(int i = 0; i <= stage; i++){
+		meshes[i]->addModifications(makeDeltaVector(i));
+	}
+
+	//recalculate all meshes after the current stage mesh from scratch
+	for(int i = stage+1; i < num_meshes; i++){
+		Mesh* prev = meshes[i-1];
+		prev->resetVariables();
+		meshes[i] = new Mesh(i, prev, makeDeltaVector(i));
+	}
 
 	assert(meshes.size() == num_meshes);
 	

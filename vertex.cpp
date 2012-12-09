@@ -85,9 +85,7 @@ void Vertex::offset(ofVec3f offset){
 }
 
 void Vertex::setNormal(ofVec3f n){
-
-	n *= -1;
-	normal = n;
+	normal.set(n);
 	setComponents();
 }
 

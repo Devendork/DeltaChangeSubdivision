@@ -20,10 +20,13 @@ Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f){
 		updateMaxs(box_max, (*it)->getPoint());
 	}
 	constructTopology();
+
+	setFacePointers();
+	updateNormals();
 }
 
 //this constructs an initial mesh from a data file and applies modifications
-Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f,vector<Delta*> changes){
+Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f, vector<Delta*> changes){
 	stage = s;
 	box_min.set(10000, 10000, 10000);
 	box_max.set(-10000, -10000, -10000);
@@ -42,8 +45,7 @@ Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f,vector<Delta*> changes){
 	}
 	constructTopology();
 	addModifications(changes);
-	setFacePointers();
-	updateNormals();
+
 }
 
 
@@ -62,24 +64,9 @@ Mesh::Mesh(int s, Mesh* old, vector<Delta*> changes){
 	
 	subdivide();
 	addModifications(changes);
-	setFacePointers();
-	updateNormals();
 }
 
 void Mesh::constructTopology(){
-
-
-	cout << "# begin vertices" << endl;
-  	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++){
-  	 	ofVec3f p = (*it)->getPoint();
-  	 	cout << "v " << (*it)->getId() << ": " << p.x << " " << p.y << " " << p.z << endl;
-  	 }
-  	 
-  	cout << endl << "# begin faces" << endl;
-  	for(map<int, Face*> :: iterator it = faces.begin(); it != faces.end(); it++){
-  		Face* f = (*it).second;
-  	 	cout << "f " << f->getA()->getId() << " " << f->getB()->getId() << " " << f->getC()->getId()<< endl;
-  	 }
 
 
 	// box_min.set(10000, 10000, 10000);
@@ -154,8 +141,6 @@ void Mesh::constructTopology(){
 	cout << "Finished Loop " << endl;
 	//this is only done once here after the first mesh is initialized
 	updateIncidentEdgeData();
-	setFacePointers();
-	updateNormals();
 }
 
 
@@ -165,14 +150,22 @@ void Mesh::addModifications(vector<Delta*> changes){
 	for(vector<Delta*> :: iterator it = changes.begin(); it != changes.end(); it++){
 		bool sym = (*it)->isSym();
 		if(sym){
-			mirrorMesh((*it)->getSymFaces());
-			cout << " *****  EXIT MIRROR ******* " << endl << endl;
+			//make sure to only do these once per add modifications cycle
+			if(!(*it)->isCompleted()){
+				mirrorMesh((*it)->getSymFaces());
+				(*it)->markCompleted();
+				cout << " *****  EXIT MIRROR ******* " << endl << endl;
+
+			}
 		}else{
 			int vid = (*it)->getVertexId();
 			ofVec3f d = (*it)->getChange();
 			vList[vid]->offset(d);
 		}
 	}
+	
+	setFacePointers();
+	updateNormals();
 
 }
 
@@ -199,13 +192,14 @@ bool Mesh::closeEnough(ofVec3f a, ofVec3f b){
 }
 
 void Mesh::mirrorMesh(vector<int> planar_faces){
+	twin_vertices.clear();
+
 	map<int, Face*> mirror_faces;
 	vector<Vertex*> mirror_vertices;
 	map<int, Face*> updated_faces;
 	int last_face_id;
 
 	cout << "Num Planar Faces " << planar_faces.size() << endl;
-
 	std::set<int> planar_set;
 	for(vector<int>::iterator it = planar_faces.begin(); it != planar_faces.end(); it++){
 		planar_set.insert(*it);
@@ -229,6 +223,7 @@ void Mesh::mirrorMesh(vector<int> planar_faces){
 		if(!closeEnough(p, pos)){
 			mirror_vertices.push_back(new Vertex(vid, pos.x, pos.y, pos.z));
 			twin_vertices.insert(pair<int, int> ((*it)->getId(), vid));
+			cout << "pointing " << (*it)->getId() << " to " << vid << endl;
 		 }else{
 		 	twin_vertices.insert(pair<int, int> ((*it)->getId(), (*it)->getId())); //link it to itself
 		 	cout << "pointing " << (*it)->getId() << " to self " << endl;
@@ -246,7 +241,6 @@ void Mesh::mirrorMesh(vector<int> planar_faces){
 		int b = x->getB()->getId();
 		int c = x->getC()->getId();
 		if(twin_vertices[a] == a && twin_vertices[b] == b && twin_vertices[c] == c){
-			cout << "Face Id: " << x->getId() << " vs index " << (*it).first << endl;
 			cout << "Vertices: " << a << ", " << b << ", " << c << endl;
 			cout << "Twin Vertices: " << twin_vertices[a] << ", " << twin_vertices[b] << ", " << twin_vertices[c] << endl;
 			planar_set.insert(x->getId());
@@ -545,6 +539,7 @@ ofVec3f Mesh::computeVertexNormal(Vertex* v){
 
 	//start at one face on the vertex
 	Face* f = v->getFace();
+	int face_count = 0;
 
 	//get the face vertex pointing to this vertex
 	FaceVertex* fv = f->getFaceVertexId(v->getId());
@@ -552,15 +547,18 @@ ofVec3f Mesh::computeVertexNormal(Vertex* v){
 
 	ofVec3f sum;
 	sum.set(f->getFaceNormal());
+	face_count++;
 
 	//add the additional points
 	while(cur != f){
+		face_count++;
 		sum += cur->getFaceNormal();
 		fv = cur->getFaceVertexId(v->getId());
 		cur = fv->getNext();
 	}
 
 	sum /= v->getIncident();
+	assert(v->getIncident() == face_count);
 
 	return sum.normalize();
 
@@ -568,6 +566,8 @@ ofVec3f Mesh::computeVertexNormal(Vertex* v){
 	
 
 ofVec3f Mesh::computeFaceNormal(Face* f){
+
+
 	ofVec3f A = vList[f->getA()->getId()]->getPoint();
 	ofVec3f B = vList[f->getB()->getId()]->getPoint();
 	ofVec3f C = vList[f->getC()->getId()]->getPoint();
@@ -575,7 +575,8 @@ ofVec3f Mesh::computeFaceNormal(Face* f){
 	ofVec3f e1 = B-A;
 	ofVec3f e2 = C-B;
 
-	return (e1.cross(e2)).normalize();
+	ofVec3f normal = (e2.cross(e1)).normalize();
+	return normal;
 
 }
 

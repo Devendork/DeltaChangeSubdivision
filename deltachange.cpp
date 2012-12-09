@@ -5,6 +5,7 @@ Delta :: Delta(int did, int vid, ofVec3f p){
 	id = did;
 	vertex_id = vid;
 	sym_mode = false;
+	completed = false;
 }
 
 Delta::Delta(int did, int fid,  vector<int> f){
@@ -12,13 +13,23 @@ Delta::Delta(int did, int fid,  vector<int> f){
 	id = did;
 	sym_faces.assign(f.begin(), f.end());
 	sym_mode = true;
+	completed = false;
+
 }
 
 Delta :: Delta(int did, int vid){
 	id = did;
 	vertex_id = vid;
 	sym_mode = false;
+	completed = false;
+}
 
+bool Delta::isCompleted(){
+	return completed;
+}
+
+void Delta::markCompleted(){
+	completed = true;
 }
 
 bool Delta::isSym(){

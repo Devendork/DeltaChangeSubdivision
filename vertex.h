@@ -34,13 +34,12 @@ public:
 	ofVec3f  getComponentX();
 	ofVec3f  getComponentY();
 	void setComponents();
-	void setTwin();
+
 	
 
 private:
 	int id;
 	int incident_edges;
-	Vertex* twin;
 	Face* face;
 	ofVec3f p;
 	ofVec3f p_offset;

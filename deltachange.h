@@ -18,6 +18,8 @@ public:
 	int getVertexId();
 	vector<int> getSymFaces();
 	bool isSym();
+	bool isCompleted();
+	void markCompleted();
 
 	
 private:
@@ -26,7 +28,9 @@ private:
 	int face_id;
 	ofVec3f change;	
 	bool sym_mode;
+	bool completed;
 	vector<int> sym_faces;
+
 };
 
 

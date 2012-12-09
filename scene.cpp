@@ -364,7 +364,7 @@ void Scene::render_coords(int vid, float lineLen){
 	glEnd();
 
 	if(vid > -1 ){
-		Vertex* v = vList[vid-1];
+		Vertex* v = vList[vid];
 		glColor3f(0., 0., 0.);
 		glBegin(GL_LINES);
 		glVertex3f(0., 0., 0.);
@@ -609,6 +609,8 @@ void Scene::flood_planar_faces(int fid, map<int, Face*>& ids){
 			if(checked.find(n->getId()) != checked.end()) continue;
 			if(to_check.find(n->getId()) != to_check.end()) continue;
 			if(!close_enough(f->getFaceNormal(), n->getFaceNormal())) continue;
+			// cout << "F Norm " << f->getFaceNormal().x << " " << f->getFaceNormal().y << " " << f->getFaceNormal().z << endl;
+			// cout << "N Norm " << n->getFaceNormal().x << " " << n->getFaceNormal().y << " " << n->getFaceNormal().z << endl;
 			to_check.insert(pair<int, Face*> (n->getId(), n)); 
 
 		}
@@ -618,9 +620,10 @@ void Scene::flood_planar_faces(int fid, map<int, Face*>& ids){
 }
 
 bool Scene::close_enough(ofVec3f a, ofVec3f b){
-	ofVec3f diff = a-b;
-	if(diff.squareLength() < .01) return true;
-	return false;
+	return a == b;
+	// ofVec3f diff = a-b;
+	// if(diff.squareLength() < .00001) return true;
+	// return false;
 }
 
 
