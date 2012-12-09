@@ -35,10 +35,10 @@ class Mesh{
 	
 public:
 	Mesh(int, vector<Vertex*>, vector<Face*>);
-	Mesh(int, Mesh* old, vector<Delta*> changes, vector<Vertex*> vertices);
+	Mesh(int s, vector<Vertex*> v, vector<Face*> f,vector<Delta*> changes);
 	Mesh(int, Mesh* , vector<Delta*> );
 	Mesh(const Mesh& m);
-	vector<Face*> getFaces();
+	map<int, Face*> getFaces();
 	vector<Vertex*> getVList();
 	void subdivide();
 	void addNewFaces(Face*, int, int, int, int, int, int);
@@ -48,7 +48,6 @@ public:
 	void connectEdgeFaces(Face* , Face* , int , int , int );
 	Vertex* getOrMakeVertex(Face*, FaceVertex* , FaceVertex* );
 	void updateIncidentEdgeData();
-	ofVec3f extraordinaryVertexValue(Face* , FaceVertex* );
 	ofVec3f loopEdgeValue(Face* f, FaceVertex* A, FaceVertex* B, Vertex* v);
 	ofVec3f loopVertexValue(Face* f, FaceVertex* A);
 	ofVec3f computeFaceNormal(Face* f);
@@ -72,8 +71,8 @@ private:
 
 	int stage;
 	vector<Vertex*> vList; //all vertexes from 
-	vector<Face*> faces;
-	vector<Face*> new_faces;
+	map<int, Face*> faces;
+	map<int, Face*> new_faces;
 	stack<Face*> to_check;
 	float weight;
 	ofVec3f box_min;

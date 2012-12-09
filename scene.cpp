@@ -2,7 +2,7 @@
 
 
 Scene::Scene (const Rect &r, MeshManager* m, GLfloat nearPlane, GLfloat viewDistance){
-	
+
 	//size = 0;
 	mm = m;
 	draw_subdivision = 0;
@@ -116,7 +116,7 @@ bool Scene::onEvent(Event::t e, GLV& glv){
 
 //exports the OBJ for the limit mesh
 void Scene::exportObj(){
-	vector<Face*> faces = mm->getLimitMesh()->getFaces();
+	map<int, Face*> faces = mm->getLimitMesh()->getFaces();
 	vector<Vertex*> vList = mm->getLimitMesh()->getVList();
 	
 
@@ -130,8 +130,9 @@ void Scene::exportObj(){
   	 }
   	 
   	obj << endl << "# begin faces" << endl;
-  	for(vector<Face*> :: iterator it = faces.begin(); it != faces.end(); it++){
-  	 	obj << "f " << (*it)->getA()->getId() << " " << (*it)->getB()->getId() << " " << (*it)->getC()->getId()<< endl;
+  	for(map<int, Face*> :: iterator it = faces.begin(); it != faces.end(); it++){
+  		Face* x = (*it).second;
+  	 	obj << "f " << x->getA()->getId() << " " << x->getB()->getId() << " " << x->getC()->getId()<< endl;
   	 }
   	 
   	 obj.close();
@@ -174,25 +175,25 @@ void Scene::enable_lights(){
 }
 
 void Scene::render_current_mesh(){
-	vector<Face*> faces = mm->getCurrentMesh()->getFaces();
+	map<int, Face*> faces = mm->getCurrentMesh()->getFaces();
 	vector<Vertex*> vList = mm->getCurrentMesh()->getVList();
-	vector<Face*> :: iterator it;
+	map<int, Face*> :: iterator it;
 	
 	for(it = faces.begin(); it != faces.end(); it++){
+		Face* x = (*it).second;
+		ofVec3f c = x->getColor();
 		
-		ofVec3f c = (*it)->getColor();
-		
-		ofVec3f A = vList[((*it)->getA()->id)-1]->getPoint();
-		ofVec3f B = vList[((*it)->getB()->id)-1]->getPoint();
-		ofVec3f C = vList[((*it)->getC()->id)-1]->getPoint();
-		ofVec3f n = (*it)->getFaceNormal();
+		ofVec3f A = vList[x->getA()->id]->getPoint();
+		ofVec3f B = vList[x->getB()->id]->getPoint();
+		ofVec3f C = vList[x->getC()->id]->getPoint();
+		ofVec3f n = x->getFaceNormal();
         
         if(!showLimitMesh || sym_mode){
 			if(sym_mode){
 				glEnable(GL_BLEND);
 				glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);				
 				
-				if((*it)->getState() == OVER) glColor4f(1., 44./255., 207./255., 1.);
+				if(x->getState() == OVER) glColor4f(1., 44./255., 207./255., 1.);
 				else glColor4f(1., 44./255., 207./255., .5);
 		    }else{ 
 		    	enable_lights();    
@@ -230,19 +231,19 @@ void Scene::render_current_mesh(){
 }
 
 void Scene::render_limit_mesh(){
-	vector<Face*> faces = mm->getLimitMesh()->getFaces();
+	map<int, Face*> faces = mm->getLimitMesh()->getFaces();
 	vector<Vertex*> vList = mm->getLimitMesh()->getVList();
-	vector<Face*> :: iterator it;
+	map<int, Face*> :: iterator it;
 
 	for(it = faces.begin(); it != faces.end(); it++){
-		
-		ofVec3f c = (*it)->getColor();
+		Face* x = (*it).second;
+		ofVec3f c = x->getColor();
 		glColor3f(c.x, c.y, c.z);
 		
-		ofVec3f A = vList[((*it)->getA()->id)-1]->getPoint();
-		ofVec3f B = vList[((*it)->getB()->id)-1]->getPoint();
-		ofVec3f C = vList[((*it)->getC()->id)-1]->getPoint();
-		ofVec3f n = (*it)->getFaceNormal();
+		ofVec3f A = vList[x->getA()->id]->getPoint();
+		ofVec3f B = vList[x->getB()->id]->getPoint();
+		ofVec3f C = vList[x->getC()->id]->getPoint();
+		ofVec3f n = x->getFaceNormal();
 
 		glBegin(GL_TRIANGLES);
 		glNormal3f(n.x, n.y, n.z);
@@ -308,16 +309,17 @@ void Scene::render_vertex_picks(){
 }
 
 void Scene::render_face_picks(){
-	vector<Face*> faces = mm->getCurrentMesh()->getFaces();
+	map<int, Face*> faces = mm->getCurrentMesh()->getFaces();
 	vector<Vertex*> vList = mm->getCurrentMesh()->getVList();
 		
-	for(vector<Face*> :: iterator it = faces.begin(); it != faces.end(); it++){
-		ofVec3f A = vList[((*it)->getA()->id)-1]->getPoint();
-		ofVec3f B = vList[((*it)->getB()->id)-1]->getPoint();
-		ofVec3f C = vList[((*it)->getC()->id)-1]->getPoint();
-		ofVec3f n = (*it)->getFaceNormal();
+	for(map<int, Face*> :: iterator it = faces.begin(); it != faces.end(); it++){
+		Face* f = (*it).second;
+		ofVec3f A = vList[f->getA()->id]->getPoint();
+		ofVec3f B = vList[f->getB()->id]->getPoint();
+		ofVec3f C = vList[f->getC()->id]->getPoint();
+		ofVec3f n = f->getFaceNormal();
 		
-		glLoadName((*it)->getId());
+		glLoadName(f->getId());
 		glPushMatrix();
 
 		glBegin(GL_TRIANGLES);
@@ -548,13 +550,11 @@ void Scene::change_pick_faces(std::set<int> picks, PICKSTATE state){
 		Face* closest = closest_face(picks);
 		selected_id = closest->getId();
 	    flood_planar_faces(selected_id, selections);
-
-	    cout << "Selections size " << selections.size() << endl;
 	}
 
-	vector<Face*> faces = mm->getCurrentMesh()->getFaces();
-	for(vector<Face*> :: iterator it = faces.begin(); it != faces.end(); it++){
-		Face* f = *it;
+	map<int, Face*> faces = mm->getCurrentMesh()->getFaces();
+	for(map<int, Face*> :: iterator it = faces.begin(); it != faces.end(); it++){
+		Face* f = (*it).second;
 
 		//hover over or over away
 		if(state == OVER){
@@ -578,7 +578,6 @@ void Scene::change_pick_faces(std::set<int> picks, PICKSTATE state){
 		if(selections.size() > 0){
 			vector<int> fids;
 			for(map<int, Face*> :: iterator it = selections.begin(); it != selections.end(); it++) fids.push_back((*it).first);
-				cout << "Face Ids size " << fids.size() << endl;
 			 mm->applyMirroring(fids);
 		}
 	}
@@ -588,19 +587,19 @@ void Scene::change_pick_faces(std::set<int> picks, PICKSTATE state){
 //starting at this face flood outward to all planar faces 
 //push each of their ids into the set
 void Scene::flood_planar_faces(int fid, map<int, Face*>& ids){
-	vector<Face*> faces = mm->getCurrentMesh()->getFaces();
+	map<int, Face*> faces = mm->getCurrentMesh()->getFaces();
 
 	map<int, Face* > to_check;
 	map<int, Face* > checked;
-	to_check.insert(pair<int, Face*>(fid, faces[fid-1]));
+	to_check.insert(pair<int, Face*>(fid, faces[fid]));
 
 
 	while(to_check.size() > 0){
 		int id = (*to_check.begin()).first;
-		ids.insert(pair<int, Face*>(id, faces[id-1]));
-		checked.insert(pair<int, Face*>(id, faces[id-1]));
+		ids.insert(pair<int, Face*>(id, faces[id]));
+		checked.insert(pair<int, Face*>(id, faces[id]));
 
-		Face* f = faces[id-1];
+		Face* f = faces[id];
 		for(int i = 0; i < 3; i++){
 			Face* n;
 			if(i == 0) n = f->getA()->getNext();
@@ -626,13 +625,13 @@ bool Scene::close_enough(ofVec3f a, ofVec3f b){
 
 
 Face* Scene::closest_face(std::set<int> ids){
-	vector<Face*> faces = mm->getCurrentMesh()->getFaces();
+	map<int, Face*> faces = mm->getCurrentMesh()->getFaces();
 	double min_dist = 2147483647;
 	Face* closest;
 
 	for(std::set<int> :: iterator it = ids.begin(); it != ids.end(); it++){
 
-		Face* f = faces[(*it)-1];
+		Face* f = faces[(*it)];
 		double d = total_distance(f);
 
 		if(d < min_dist){
@@ -648,9 +647,9 @@ Face* Scene::closest_face(std::set<int> ids){
 double Scene::total_distance(Face* f){
 	vector<Vertex*> vList = mm->getCurrentMesh()->getVList();
 	ofVec3f eye = eye_coords();
-	ofVec3f A = vList[(f->getA()->id)-1]->getPoint();
-	ofVec3f B = vList[(f->getB()->id)-1]->getPoint();		
-	ofVec3f C = vList[(f->getC()->id)-1]->getPoint();
+	ofVec3f A = vList[f->getA()->id]->getPoint();
+	ofVec3f B = vList[f->getB()->id]->getPoint();		
+	ofVec3f C = vList[f->getC()->id]->getPoint();
 
 	double d1 = A.squareDistance(eye);
 	double d2 = B.squareDistance(eye);

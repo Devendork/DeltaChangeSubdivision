@@ -30,28 +30,29 @@ Mesh* MeshManager::loadMesh(){
 
 	//read in each vertex into a list
 	vector<Vertex*> vlist;
-	vlist.push_back(new Vertex(1, 0, 0, 0));
-	vlist.push_back(new Vertex(2, 100, 0, 0));
-	vlist.push_back(new Vertex(3, 100, 0, -100));
-	vlist.push_back(new Vertex(4, 0, 0, -100));
-	vlist.push_back(new Vertex(5, 0, 100, 0));
-	vlist.push_back(new Vertex(6, 100, 100, 0));
-	vlist.push_back(new Vertex(7, 100, 100, -100));
-	vlist.push_back(new Vertex(8, 0, 100, -100));
+	vlist.push_back(new Vertex(0, 0, 0, 0));
+	vlist.push_back(new Vertex(1, 100, 0, 0));
+	vlist.push_back(new Vertex(2, 100, 0, -100));
+	vlist.push_back(new Vertex(3, 0, 0, -100));
+	vlist.push_back(new Vertex(4, 0, 100, 0));
+	vlist.push_back(new Vertex(5, 100, 100, 0));
+	vlist.push_back(new Vertex(6, 100, 100, -100));
+	vlist.push_back(new Vertex(7, 0, 100, -100));
 	
 	vector<Face*> faces;
-	faces.push_back(new Face(1, 1, 3, 4));
-	faces.push_back(new Face(2, 2, 3, 1));
-	faces.push_back(new Face(3, 4, 8, 1));
-	faces.push_back(new Face(4, 1, 8, 5));
-	faces.push_back(new Face(5, 4, 7, 8));
-	faces.push_back(new Face(6, 3, 7, 4));
-	faces.push_back(new Face(7, 2, 7, 3));
-	faces.push_back(new Face(8, 2, 6, 7));
-	faces.push_back(new Face(9, 7, 5, 8));
-	faces.push_back(new Face(10,7, 6, 5));
-	faces.push_back(new Face(11,6, 1, 5));
-	faces.push_back(new Face(12, 6, 2, 1));
+	//the faces are always going to be one index higher when they are first entered
+	faces.push_back(new Face(0, 0, 2, 3));
+	faces.push_back(new Face(1, 1, 2, 0));
+	faces.push_back(new Face(2, 3, 7, 0));
+	faces.push_back(new Face(3, 0, 7, 4));
+	faces.push_back(new Face(4, 3, 6, 7));
+	faces.push_back(new Face(5, 2, 6, 3));
+	faces.push_back(new Face(6, 1, 6, 2));
+	faces.push_back(new Face(7, 1, 5, 6));
+	faces.push_back(new Face(8, 6, 4, 7));
+	faces.push_back(new Face(9,6, 5, 4));
+	faces.push_back(new Face(10,5, 0, 4));
+	faces.push_back(new Face(11, 5, 1, 0));
 
 
 	for(vector<Vertex*> :: iterator it = vlist.begin(); it != vlist.end(); it++){
@@ -61,7 +62,7 @@ Mesh* MeshManager::loadMesh(){
 	}
 
 
-	return new Mesh(0, vlist, faces);	
+	return new Mesh(0, vlist, faces, makeDeltaVector(0));	
 
 }
 
@@ -105,7 +106,7 @@ Mesh* MeshManager::loadObj(){
 				float z = atof((remaining.substr(0, space)).data());
 				remaining = remaining.substr(space+1);
 			
-				vlist.push_back(new Vertex(vlist.size()+1, x*scale.x, y*1.5*scale.y, z*scale.z));
+				vlist.push_back(new Vertex(vlist.size(), x*scale.x, y*1.5*scale.y, z*scale.z));
 			}
 			
 			
@@ -130,7 +131,7 @@ Mesh* MeshManager::loadObj(){
 				int f3 = atoi((remaining.substr(0, slash)).data());
 				remaining = remaining.substr(space+1);
 				
-			faces.push_back(new Face(faces.size()+1, f1, f2, f3));
+				faces.push_back(new Face(faces.size(), f1-1, f2-1, f3-1));
 			}
 
  		}
@@ -140,7 +141,7 @@ Mesh* MeshManager::loadObj(){
 	cout << "Num Faces" << faces.size() << endl;
 				
 
-	return new Mesh(0,vlist, faces);
+	return new Mesh(0,vlist, faces, makeDeltaVector(0));
 
 }
 
@@ -170,17 +171,28 @@ void MeshManager::updateMeshScaling(ofVec3f oldScale){
 void MeshManager::updateMeshes(unsigned int stage){
 
 	int num_meshes = meshes.size();
+	meshes.clear();
 
-	for(int i = 0; i <= stage; i++){
-		meshes[i]->addModifications(makeDeltaVector(i));
-	}
+	if(hasfile) meshes.push_back(loadObj());
+	else meshes.push_back(loadMesh());
 
-	//recalculate all meshes after the current stage mesh from scratch
-	for(int i = stage+1; i < num_meshes; i++){
+	for(int i = 1; i < num_meshes; i++){
 		Mesh* prev = meshes[i-1];
 		prev->resetVariables();
-		meshes[i] = new Mesh(i, prev, makeDeltaVector(i));
+		meshes.push_back(new Mesh(i, prev, makeDeltaVector(i)));
 	}
+
+
+	// for(int i = 0; i <= stage; i++){
+	// 	meshes[i]->addModifications(makeDeltaVector(i));
+	// }
+
+	// //recalculate all meshes after the current stage mesh from scratch
+	// for(int i = stage+1; i < num_meshes; i++){
+	// 	Mesh* prev = meshes[i-1];
+	// 	prev->resetVariables();
+	// 	meshes[i] = new Mesh(i, prev, makeDeltaVector(i));
+	// }
 
 	assert(meshes.size() == num_meshes);
 	
@@ -254,7 +266,6 @@ int MeshManager::getStageFace(int stage, vector<int> faces){
 
 
 void MeshManager::applyMirroring(vector<int> faces){
-	cout << "Get or make sym delta with " << faces.size() << "Faces" << endl;
 	getOrMakeSymDelta(current, faces);
 	updateMeshes(current);
 
