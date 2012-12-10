@@ -249,7 +249,7 @@ int main (int argc, char ** argv){
 	scene.setDialers(nd_x, nd_y, nd_z, nd_n);
 
 
-	View viewScales(Rect(10,coordScene.bottom()+20, 400,100));
+	View viewScales(Rect(10,coordScene.bottom()+20, 350,100));
 	Label labelScale("Adjust Scale", false);		
 	View v_scalexyz(Rect(0, 0, 300, 20));
 	nd_scalex = new NumberDialer(Rect(20), 3, 2, 0.01, 999);

@@ -616,18 +616,19 @@ void Scene::flood_planar_faces(int fid, map<int, Face*>& ids){
 	map<int, Face* > checked;
 	to_check.insert(pair<int, Face*>(fid, faces[fid]));
 
-
 	while(to_check.size() > 0){
 		int id = (*to_check.begin()).first;
 		ids.insert(pair<int, Face*>(id, faces[id]));
 		checked.insert(pair<int, Face*>(id, faces[id]));
 
 		Face* f = faces[id];
+
 		for(int i = 0; i < 3; i++){
 			Face* n;
 			if(i == 0) n = f->getA()->getNext();
 			else if(i == 1) n = f->getB()->getNext();
 			else n = f->getC()->getNext();
+
 
 			if(checked.find(n->getId()) != checked.end()) continue;
 			if(to_check.find(n->getId()) != to_check.end()) continue;
@@ -713,7 +714,7 @@ void Scene::adjust_vertex_by_normal(float f){
 	if(selected.size() > 0 ){
 		for(vector<int> ::iterator it = selected.begin(); it != selected.end(); it++){
 			int id = *it;
-			ofVec3f amount = vList[id-1]->getNormal();
+			ofVec3f amount = vList[id]->getNormal();
 			amount *= f;
 			mm->adjustVertex(mm->getCurrentMeshLevel(), id, amount);
 		} 
