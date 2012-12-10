@@ -35,6 +35,7 @@ public:
 	ofVec3f  getComponentY();
 	void setComponents();
 
+
 	
 
 private:

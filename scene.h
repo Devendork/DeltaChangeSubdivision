@@ -79,6 +79,7 @@ public:
 	void adjust_vertex_by_normal(float amount);
 	void setViewDistance(float f);
 	void toggleSymmetryMode();
+	void select_twins(int, PICKSTATE);
 
 	virtual void onDraw3D(GLV& g);
 	virtual bool onEvent(Event::t e, GLV& glv);

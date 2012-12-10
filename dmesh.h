@@ -29,6 +29,7 @@ using namespace std;
 
 typedef ofVec3f BoundingBox3f;
 
+
 class Delta;
 
 class Mesh{
@@ -36,8 +37,8 @@ class Mesh{
 public:
 	Mesh(int, vector<Vertex*>, vector<Face*>);
 	Mesh(int s, vector<Vertex*> v, vector<Face*> f,vector<Delta*> changes);
-	Mesh(int, Mesh* , vector<Delta*> );
-	Mesh(const Mesh& m);
+	Mesh(int, Mesh* old, vector<Delta*> changes);
+//	Mesh(const Mesh& m);
 	map<int, Face*> getFaces();
 	vector<Vertex*> getVList();
 	void subdivide();
@@ -64,6 +65,10 @@ public:
 	void applyScaling(ofVec3f);
 	void mirrorMesh(vector<int>);
 	void constructTopology();
+	map<int, int> getTwins();
+	void insertTwin(int from, int to);
+	void addFamily(int child, int p1, int p2);
+	void linkChildren();
 
 
 private:
@@ -78,7 +83,8 @@ private:
 	ofVec3f box_min;
 	ofVec3f box_max;
 	map<int, int> twin_vertices; //<a map from the orignial vertex to it's mirror vertex >>
-
+	//map<int, std::set<int>> families; //this links vertices on subdivided edges to their parents to make symmetry reltaions
+	map< int, map <int, int> > lineage;
 
 };
 

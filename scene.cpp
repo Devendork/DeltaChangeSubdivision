@@ -68,7 +68,7 @@ void Scene::onDraw3D(GLV& g){
     if(showLimitMesh){
     glPushMatrix();
 	gluLookAt(eye.x, eye.y, eye.z, 0, 0, 0, 0, 1, 0);
-    render_coords(-1, size);
+    //render_coords(-1, size);
 	enable_lights();
 	glTranslatef(-size/2., -size/2., size/2.);
 	render_limit_mesh();
@@ -540,6 +540,29 @@ void Scene::change_pick_vertices(std::set<int> selections, PICKSTATE state){
 	}
 
 	if(count_ons == 0) update_dialer_values(ofVec3f(0,0,0));
+
+	for(std::set<int> :: iterator it = selections.begin(); it != selections.end(); it++){
+		select_twins(*it, vList[*it]->getState());
+	}
+}
+
+void Scene::select_twins(int i, PICKSTATE ps){
+	int base;
+	map<int, int> twins = mm->getCurrentMesh()->getTwins();
+
+
+	vector<Vertex*> vList = mm->getCurrentMesh()->getVList();
+
+	if(twins[i] == i) base = i;
+	else base = twins[i];
+
+	for(map<int, int> :: iterator it = twins.begin(); it != twins.end(); it++){
+		if(base == (*it).second){
+			if(ps != OFF) vList[(*it).first]->setState(ps);
+		}
+	}
+
+
 }
 
 void Scene::change_pick_faces(std::set<int> picks, PICKSTATE state){
@@ -609,8 +632,6 @@ void Scene::flood_planar_faces(int fid, map<int, Face*>& ids){
 			if(checked.find(n->getId()) != checked.end()) continue;
 			if(to_check.find(n->getId()) != to_check.end()) continue;
 			if(!close_enough(f->getFaceNormal(), n->getFaceNormal())) continue;
-			// cout << "F Norm " << f->getFaceNormal().x << " " << f->getFaceNormal().y << " " << f->getFaceNormal().z << endl;
-			// cout << "N Norm " << n->getFaceNormal().x << " " << n->getFaceNormal().y << " " << n->getFaceNormal().z << endl;
 			to_check.insert(pair<int, Face*> (n->getId(), n)); 
 
 		}

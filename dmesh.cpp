@@ -9,7 +9,10 @@ Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f){
 	stage = s;
 	
 	for(vector<Face*> :: iterator it = f.begin(); it != f.end(); it++) faces.insert(pair<int, Face*> ((*it)->getId(), *it));
-	for(vector<Vertex*> :: iterator it = v.begin(); it != v.end(); it++) vList.push_back(*it);
+	for(vector<Vertex*> :: iterator it = v.begin(); it != v.end(); it++){
+		vList.push_back(*it);
+		twin_vertices.insert(pair<int, int> ((*it)->getId(), (*it)->getId())); // to start, everything points to itself
+	} 
 
 	box_min.set(10000, 10000, 10000);
 	box_max.set(-10000, -10000, -10000);
@@ -19,8 +22,8 @@ Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f){
 		updateMins(box_min, (*it)->getPoint());
 		updateMaxs(box_max, (*it)->getPoint());
 	}
-	constructTopology();
 
+	constructTopology();
 	setFacePointers();
 	updateNormals();
 }
@@ -33,7 +36,10 @@ Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f, vector<Delta*> changes){
 	stage = s;
 	
 	for(vector<Face*> :: iterator it = f.begin(); it != f.end(); it++) faces.insert(pair<int, Face*> ((*it)->getId(), *it));
-	for(vector<Vertex*> :: iterator it = v.begin(); it != v.end(); it++) vList.push_back(*it);
+	for(vector<Vertex*> :: iterator it = v.begin(); it != v.end(); it++){
+		vList.push_back(*it);
+		twin_vertices.insert(pair<int, int> ((*it)->getId(), (*it)->getId())); // to start, everything points to itself
+	} 
 
 	box_min.set(10000, 10000, 10000);
 	box_max.set(-10000, -10000, -10000);
@@ -56,13 +62,17 @@ Mesh::Mesh(int s, Mesh* old, vector<Delta*> changes){
 	
 	map<int, Face*> f = old->getFaces();
 	vector<Vertex*> v = old->getVList();
+	map<int, int> t = old->getTwins();
 	
 	for(map<int, Face*> :: iterator it = f.begin(); it != f.end(); it++) faces.insert(*it);
 	for(vector<Vertex*> :: iterator it = v.begin(); it != v.end(); it++){
 		vList.push_back(new Vertex(*it));
 	} 
-	
+
+	for(map<int, int> :: iterator it = t.begin(); it != t.end(); it++) twin_vertices.insert(*it);
+
 	subdivide();
+	linkChildren();
 	addModifications(changes);
 }
 
@@ -138,7 +148,6 @@ void Mesh::constructTopology(){
 		
 	}
 	
-	cout << "Finished Loop " << endl;
 	//this is only done once here after the first mesh is initialized
 	updateIncidentEdgeData();
 }
@@ -154,8 +163,6 @@ void Mesh::addModifications(vector<Delta*> changes){
 			if(!(*it)->isCompleted()){
 				mirrorMesh((*it)->getSymFaces());
 				(*it)->markCompleted();
-				cout << " *****  EXIT MIRROR ******* " << endl << endl;
-
 			}
 		}else{
 			int vid = (*it)->getVertexId();
@@ -163,10 +170,9 @@ void Mesh::addModifications(vector<Delta*> changes){
 			vList[vid]->offset(d);
 		}
 	}
-	
+
 	setFacePointers();
 	updateNormals();
-
 }
 
 void Mesh::setFacePointers(){
@@ -192,27 +198,24 @@ bool Mesh::closeEnough(ofVec3f a, ofVec3f b){
 }
 
 void Mesh::mirrorMesh(vector<int> planar_faces){
-	twin_vertices.clear();
 
 	map<int, Face*> mirror_faces;
 	vector<Vertex*> mirror_vertices;
 	map<int, Face*> updated_faces;
+	map<int, int> temp_twins;
+
 	int last_face_id;
 
-	cout << "Num Planar Faces " << planar_faces.size() << endl;
+
 	std::set<int> planar_set;
-	for(vector<int>::iterator it = planar_faces.begin(); it != planar_faces.end(); it++){
-		planar_set.insert(*it);
-		Face* pf = faces[*it];
-		cout << "Planar Face: " <<  pf->getId() << " : " << pf->getA()->getId() << " " << pf->getB()->getId() << " " << pf->getC()->getId() << endl;
-	} 
+	for(vector<int>::iterator it = planar_faces.begin(); it != planar_faces.end(); it++) planar_set.insert(*it);
+	 
 
 	Face* pface = faces[(*planar_faces.begin())];
 	ofVec3f o = vList[pface->getA()->getId()]->getPoint(); //get a point on this plane
 	ofVec3f n = pface->getFaceNormal();
 	double w = -(n.x * o.x) - (n.y * o.y) - (n.z * o.z);
 	
-	//first just lay across the vertices
 	for(
 		vector<Vertex*>::iterator it = vList.begin(); it != vList.end(); it++){
 		ofVec3f p = (*it)->getPoint();
@@ -222,16 +225,14 @@ void Mesh::mirrorMesh(vector<int> planar_faces){
 
 		if(!closeEnough(p, pos)){
 			mirror_vertices.push_back(new Vertex(vid, pos.x, pos.y, pos.z));
-			twin_vertices.insert(pair<int, int> ((*it)->getId(), vid));
-			cout << "pointing " << (*it)->getId() << " to " << vid << endl;
+			temp_twins.insert(pair<int, int> ((*it)->getId(), vid));
+			insertTwin((*it)->getId(), vid);
 		 }else{
-		 	twin_vertices.insert(pair<int, int> ((*it)->getId(), (*it)->getId())); //link it to itself
-		 	cout << "pointing " << (*it)->getId() << " to self " << endl;
+		 	temp_twins.insert(pair<int, int> ((*it)->getId(), (*it)->getId())); //link it to itself
 		 }
 	}
 	vList.insert(vList.end(), mirror_vertices.begin(), mirror_vertices.end());
 
-	cout << endl << "Size of Planar Set Pre: " << planar_set.size() << endl;
 	//find any additional planar triangles 
 	for(map<int, Face*>::iterator it = faces.begin(); it != faces.end(); it++){
 		last_face_id = (*it).first;
@@ -240,31 +241,19 @@ void Mesh::mirrorMesh(vector<int> planar_faces){
 		int a = x->getA()->getId();
 		int b = x->getB()->getId();
 		int c = x->getC()->getId();
-		if(twin_vertices[a] == a && twin_vertices[b] == b && twin_vertices[c] == c){
-			cout << "Vertices: " << a << ", " << b << ", " << c << endl;
-			cout << "Twin Vertices: " << twin_vertices[a] << ", " << twin_vertices[b] << ", " << twin_vertices[c] << endl;
-			planar_set.insert(x->getId());
-		} 
+		if(temp_twins[a] == a && temp_twins[b] == b && temp_twins[c] == c) planar_set.insert(x->getId());
+		 
 		
 	}
-	cout << "Size of Planar Set Post " << planar_set.size() << endl;
 
 	//remove any triangles that lie on the mirror plane
    	for(map<int, Face*>::iterator it = faces.begin(); it != faces.end(); it++){
    		Face* x = (*it).second;
-   		cout << (*it).first << " In Planar Set? " << (planar_set.count((*it).first) == 0) << endl;
    		if(planar_set.count(x->getId()) == 0) updated_faces.insert(*it);
    	}
 
-   	cout << "Removed " << faces.size() - updated_faces.size() << " Faces " << endl;
    	faces.clear();
    	faces.insert(updated_faces.begin(), updated_faces.end());
-
-	//make sure the face ids match their indices into the vector
-	cout << faces.size() << " After Removals " << endl;
-	//for(int i = 0; i < faces.size(); i++) faces[i]->setId(i+1);
-	
-
 
 	//now replicate remaining faces with new vertex values
 	for(map<int, Face*>::iterator it = faces.begin(); it != faces.end(); it++){
@@ -276,8 +265,7 @@ void Mesh::mirrorMesh(vector<int> planar_faces){
 		x->resetFaceVertexNexts(); //this will make it so that it will look for connections
 
 		int fid = last_face_id + mirror_faces.size() + 1; //okay to have mirror faces size because it will be sequential 
-		cout << "adding new face at " << fid << endl;
-		Face* n_face = new Face(fid, twin_vertices[b], twin_vertices[a], twin_vertices[c]); //flip to make ccw
+		Face* n_face = new Face(fid, temp_twins[b], temp_twins[a], temp_twins[c]); //flip to make ccw
 		mirror_faces.insert(pair<int, Face*> (fid, n_face));
 	}
 
@@ -285,6 +273,13 @@ void Mesh::mirrorMesh(vector<int> planar_faces){
 	faces.insert(mirror_faces.begin(), mirror_faces.end());
 	assert(faces.size() == 2*mirror_faces.size()); //make sure we didn't duplicate any indices
 	constructTopology();
+}
+
+//find the lowest level twin to connect this to
+//from is the original vertex and to is the new vertex
+void Mesh::insertTwin(int from, int to){
+	while(from != twin_vertices[from]) from = twin_vertices[from];
+	twin_vertices.insert(pair<int, int> (to, from));
 }
 
 void Mesh::updateIncidentEdgeData(){
@@ -483,14 +478,79 @@ Vertex* Mesh::getOrMakeVertex(Face* f, FaceVertex* from, FaceVertex* to){
 		int shared = n->getVertexOnEdgeId(from->id, to->id);
 		return vList[shared];
 	}else{
+		
 		ofVec3f mid = (vList[(from->id)]->getPoint() + vList[(to->id)]->getPoint()) / 2.;
 		Vertex* v = new Vertex(vList.size(), mid.x, mid.y, mid.z );
 		v->setIncidentEdge(6); //any subdivided edge will have 6 incident edges
-		vList.push_back(v);		
+		vList.push_back(v);
+		twin_vertices.insert(pair<int, int> (v->getId(), v->getId())); //assume that its a base 
+
+		addFamily(v->getId(), from->id, to->id);
+
 		if(to->hasNext() && !to->getNext()->isDivided()) to_check.push(to->getNext());
 		return v;
 	}
 	
+}
+
+void Mesh::linkChildren(){
+
+
+	//go through each edge and map it to another
+	for(map <int, map <int, int> > :: iterator it = lineage.begin(); it != lineage.end(); it++){
+		int p1 = (*it).first;
+		map<int, int> parentchild = (*it).second;
+
+		for(map<int, int> :: iterator mit = parentchild.begin(); mit != parentchild.end(); mit++){
+			int p2 = (*mit).first;
+			int c = (*mit).second;
+
+			if(twin_vertices[p1] != p1 || twin_vertices[p2] != p2){
+				int orig1  = twin_vertices[p1];
+				int orig2 = twin_vertices[p2];
+				int origc;
+
+				if(orig1 > orig2){
+					int temp = orig2;
+					orig2 = orig1;
+					orig1 = temp;
+				}
+
+				
+				origc = lineage[orig1][orig2];
+				twin_vertices[c] = origc;
+			}
+
+		} 
+
+	}
+
+}
+
+void Mesh::addFamily(int child, int p1, int p2){
+	assert(p1 != p2);
+	assert(child != 0);
+
+	// std::set parents;
+	// parents.insert(p1);
+	// parents.insert(p2);
+	// families.insert(pair<int, std::set<int> >(child, parents));		
+
+	//make sure they are inserted least to least
+	if(p1 > p2){
+		int temp = p2;
+		p2 = p1;
+		p1 = temp;
+	}
+
+	assert(p1 < p2);
+
+	//add this to a reverse look up list 
+	map<int, int> parentchild;
+	parentchild.insert(pair<int, int> (p2, child));
+	if(lineage.count(p1)) lineage[p1].insert(pair<int, int>(p2, child));
+	else lineage.insert(pair<int, map<int, int> > (p1, parentchild) );
+
 }
 
 
@@ -628,14 +688,18 @@ vector<Vertex*> Mesh::getVList(){
 	return vList;
 }
 
-
-Mesh :: Mesh(const Mesh& m){
-	map<int, Face*> f = m.faces;
-	vector<Vertex*> v = m.vList;
-	
-	for(map<int, Face*> :: iterator it = f.begin(); it != f.end(); it++) faces.insert(*it);
-	for(vector<Vertex*> :: iterator it = v.begin(); it != v.end(); it++) vList.push_back(*it);
+map<int, int> Mesh::getTwins(){
+	return twin_vertices;
 }
+
+
+// Mesh :: Mesh(const Mesh& m){
+// 	map<int, Face*> f = m.faces;
+// 	vector<Vertex*> v = m.vList;
+	
+// 	for(map<int, Face*> :: iterator it = f.begin(); it != f.end(); it++) faces.insert(*it);
+// 	for(vector<Vertex*> :: iterator it = v.begin(); it != v.end(); it++) vList.push_back(*it);
+// }
 
 
 ofVec3f Mesh::getBoxMin(){
