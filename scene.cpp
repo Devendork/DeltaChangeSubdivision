@@ -624,16 +624,17 @@ void Scene::flood_planar_faces(int fid, map<int, Face*>& ids){
 		Face* f = faces[id];
 
 		for(int i = 0; i < 3; i++){
-			Face* n;
-			if(i == 0) n = f->getA()->getNext();
-			else if(i == 1) n = f->getB()->getNext();
-			else n = f->getC()->getNext();
+			FaceVertex* n;
+			Face* nf;
+			if(i == 0) n = f->getA();
+			else if(i == 1) n = f->getB();
+			else n = f->getC();
 
-
-			if(checked.find(n->getId()) != checked.end()) continue;
-			if(to_check.find(n->getId()) != to_check.end()) continue;
-			if(!close_enough(f->getFaceNormal(), n->getFaceNormal())) continue;
-			to_check.insert(pair<int, Face*> (n->getId(), n)); 
+			if(!n->hasNext()) continue;
+			if(checked.find(nf->getId()) != checked.end()) continue;
+			if(to_check.find(nf->getId()) != to_check.end()) continue;
+			if(!close_enough(f->getFaceNormal(), nf->getFaceNormal())) continue;
+			to_check.insert(pair<int, Face*> (nf->getId(), nf)); 
 
 		}
 		to_check.erase(id);
@@ -642,10 +643,9 @@ void Scene::flood_planar_faces(int fid, map<int, Face*>& ids){
 }
 
 bool Scene::close_enough(ofVec3f a, ofVec3f b){
-	return a == b;
-	// ofVec3f diff = a-b;
-	// if(diff.squareLength() < .00001) return true;
-	// return false;
+	ofVec3f diff = a-b;
+	if(diff.squareLength() < .001) return true;
+	return false;
 }
 
 

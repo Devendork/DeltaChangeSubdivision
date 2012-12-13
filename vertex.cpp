@@ -7,7 +7,7 @@ Vertex :: Vertex(int i, float x, float y, float z){
 	p_offset.set(0,0,0);
 
 	c.set(237/255, 28/255, 26/255);
-	incident_edges = 2;
+	incident_edges = 0;
 	ps = OFF;
 	
 }
@@ -25,6 +25,10 @@ Vertex::Vertex(Vertex* v){
 	ps = v->getState();
 }
 
+
+void Vertex::incrementIncident(){
+	incident_edges++;
+}
 
 int Vertex::getId(){
 	return id;
@@ -111,6 +115,15 @@ ofVec3f Vertex::getComponentY(){
 
 ofVec3f Vertex::getNormal(){
 	return normal;
+}
+
+void Vertex::addComponentNormal(ofVec3f v){
+	normal += v;
+}
+
+void Vertex::makeNormalAverage(){
+	normal /= incident_edges;
+	normal.normalize();
 }
 
 

@@ -24,8 +24,10 @@ Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f){
 	}
 
 	constructTopology();
-	setFacePointers();
-	updateNormals();
+	updateMeshData();
+
+//	setFacePointers();
+//	updateNormals();
 }
 
 //this constructs an initial mesh from a data file and applies modifications
@@ -49,8 +51,11 @@ Mesh::Mesh(int s, vector<Vertex*> v, vector<Face*> f, vector<Delta*> changes){
 		updateMins(box_min, (*it)->getPoint());
 		updateMaxs(box_max, (*it)->getPoint());
 	}
+	
 	constructTopology();
 	addModifications(changes);
+	updateMeshData();
+
 
 }
 
@@ -72,12 +77,12 @@ Mesh::Mesh(int s, Mesh* old, vector<Delta*> changes){
 	for(map<int, int> :: iterator it = t.begin(); it != t.end(); it++) twin_vertices.insert(*it);
 
 	subdivide();
-	linkChildren();
+	//linkChildren();
 	addModifications(changes);
+	updateMeshData();
 }
 
 void Mesh::constructTopology(){
-
 
 	// box_min.set(10000, 10000, 10000);
 	// box_max.set(-10000, -10000, -10000);
@@ -91,7 +96,7 @@ void Mesh::constructTopology(){
 	// 	updateMaxs(box_max, (*it)->getPoint());
 	// }
 	
-	//every edge is shared by two faces
+
 	while(f.size() > 0){
 
 		Face* face = (*(f.begin())).second;
@@ -128,28 +133,11 @@ void Mesh::constructTopology(){
 					num_found++;
 				}
 			}
-			
-			if(num_found > 1){
-				
-				//check the remaining faces to see if one of them has a matching edge
-				for(map<int, Face*>::iterator it = f.begin(); it != f.end(); it++){
-					Face* x = (*it).second;
-					if(x->hasEdge(to->getId(), from->getId())){
-						cout << "found: " << x->getA()->id << ", " << x->getB()->id << ", " << x->getC()->id << endl;
-					}
-				}
-			}else if (num_found == 0) {
-				cout << "nothing found along " << from->getId() << " to " << to->getId() << endl;
-				cout << "on triangle : " << face->getA()->id << ", " << face->getB()->id << ", " << face->getC()->id << endl;
-
-			}
 						
 		}
 		
 	}
-	
-	//this is only done once here after the first mesh is initialized
-	updateIncidentEdgeData();
+
 }
 
 
@@ -171,25 +159,8 @@ void Mesh::addModifications(vector<Delta*> changes){
 		}
 	}
 
-	setFacePointers();
-	updateNormals();
 }
 
-void Mesh::setFacePointers(){
-	for(map<int, Face*>::iterator it = faces.begin(); it != faces.end(); it++){
-		Face* x = (*it).second;
-		vList[x->getA()->getId()]->setFace(x);
-		vList[x->getB()->getId()]->setFace(x);
-		vList[x->getC()->getId()]->setFace(x);
-	}
-
-}
-
-
-void Mesh::updateNormals(){
-	for(map<int, Face*>::iterator it = faces.begin(); it != faces.end(); it++) ((*it).second)->setFaceNormal(computeFaceNormal((*it).second));
-	for(vector<Vertex*>::iterator it = vList.begin(); it != vList.end(); it++) (*it)->setNormal(computeVertexNormal(*it));
-}
 
 bool Mesh::closeEnough(ofVec3f a, ofVec3f b){
 	ofVec3f diff = a-b;
@@ -282,43 +253,65 @@ void Mesh::insertTwin(int from, int to){
 	twin_vertices.insert(pair<int, int> (to, from));
 }
 
-void Mesh::updateIncidentEdgeData(){
-	set<int> checked_vtxs;
-	int ni, v_id;
-	Face* f;
+
+
+//1. Updates the incident edge data for the vertex
+//2. Updates the Face Normals
+//3. Updates the Vertex Normals
+
+void Mesh::updateMeshData(){
+
+
+	FaceVertex* from, *to;
+	ofVec3f zeros;
+
+	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++){
+		(*it)->setIncidentEdge(0);
+		(*it)->setNormal(zeros);
+	} 
+
 	
 	//check from face to face 
 	for(map<int, Face*> :: iterator it = faces.begin(); it != faces.end(); it++){
 		Face* x = (*it).second;
+
+		x->setFaceNormal(computeFaceNormal(x));
+		ofVec3f n = x->getFaceNormal();
+
 		for(int i = 0; i < 3; i++){
-		
-			if(i == 0){
-				v_id = x->getA()->id;
-				f = x->getA()->getNext();
-
-			}else if(i == 1){
-				v_id = x->getB()->id;
-				f = x->getB()->getNext();
-
-			}else{
-				v_id = x->getC()->id;
-				f = x->getC()->getNext();
-
-			}
-		
-			if(checked_vtxs.count(v_id) == 0){
-				ni = 1;
 			
-				while(f != x){
-				f = f->getFaceVertexId(v_id)->getNext();
-				ni++;
-				}
-				
-				vList[v_id]->setIncidentEdge(ni);
+			switch (i){
+				case 0: 
+				from = x->getA();
+				to = x->getB();
+		
+				break;
+
+				case 1: 
+				from = x->getB();
+				to = x->getC();
+				break;
+
+				case 2:
+				from = x->getC();
+				to = x->getA();
 			}
+
+			vList[from->id]->incrementIncident();
+			vList[from->id]->addComponentNormal(n);
+
+			//if it's a boundary, then make sure to add both directions
+			if(!to->hasNext()){
+				vList[to->id]->incrementIncident();
+				vList[to->id]->addComponentNormal(n);
+			} 
 		}
+
+
+
 	}
 
+	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++) (*it)->makeNormalAverage();
 
 }
 
@@ -367,48 +360,72 @@ void Mesh::subdivide(){
 	//now that everything is subdivided, go ahead and update all the points	
 	FaceVertex *from;
 	FaceVertex *to;
+	std::set<int> midpoints;
 	
 	//this should match the size of the current vList
-	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++) placement.push_back(temp);
+	for(vector<Vertex*> :: iterator it = vList.begin(); it != vList.end(); it++)placement.push_back(temp);
+
+	
+	//update the vertex values
 	for(map<int, Face*> :: iterator it = originals.begin(); it != originals.end(); it++){
 		Face* f = (*it).second;
+
+
 		for(int i = 0; i < 3; i++){
 			
-			if(i == 0){
+			switch (i){
+				case 0: 
 				from = f->getA();
 				to = f->getB();
-				
-			}else if(i == 1){
+		
+				break;
+
+				case 1: 
 				from = f->getB();
 				to = f->getC();
-			}else{
+				break;
+
+				case 2:
 				from = f->getC();
 				to = f->getA();
 			}
+
+			placement[from->id] += vList[to->id]->getPoint();
+			counts[from->id]++;
+
+			//if it's a boundary, then make sure to add both directions
+			if(!to->hasNext())placement[to->id] += vList[from->id]->getPoint();
 			
-			//place the original vertex value
-			if(!checked.count(from->id)){
-				checked.insert(from->id);
-				Vertex* v = vList[from->id];
-				placement[from->id] = loopVertexValue(f, from);
-			}
-			
+
+
 			int vtx_id = f->getVertexOnEdgeId(from->id, to->id);
+			midpoints.insert(vtx_id);
 			Vertex* vmid = vList[vtx_id];
 				if(!checked.count(vtx_id)){
 					checked.insert(vtx_id);
 					placement[vtx_id] = loopEdgeValue(f, from, to, vmid);
-
 			}
 		}
+
 	}
 
-	
-	
-	//once we've computed all the points move them
 	for(unsigned int i = 0; i < placement.size(); i++){
+		if(midpoints.count(i) == 0){
+			int K = vList[i]->getIncident();
+			placement[i] /= (double) K;
+			double alpha = pow(((.375) + (.25)*cos((TWO_PI/(double)K))), 2.) + .375;
+			ofVec3f value = (alpha*vList[i]->getPoint()) + ((1. - alpha)*placement[i]);
+			placement[i].set(value); //overwrite placement with the new vertex value
+		}
+
 		vList[i]->setPoint(placement[i]);
 	}
+
+	//update values on edges
+	for(map<int, Face*> :: iterator it = originals.begin(); it != originals.end(); it++){
+	
+	}
+
 
 	deleteOldFaces();
 
@@ -416,48 +433,15 @@ void Mesh::subdivide(){
 }
 
 
-ofVec3f Mesh::loopVertexValue(Face* f, FaceVertex* A){
-	
-	int vid = A->id;
-	int K = vList[vid]->getIncident();
-	int count = 1;
-	Face* fn;
-	FaceVertex* fv;
-	ofVec3f value; 
-	value.set(0, 0, 0);
-	ofVec3f average;
-	double alpha;
-	
-	assert(K >= 3);
-	
-	//push all the neighboring vertices into a list
-	fv = f->ccwNeighbor(vid);
-	average = vList[fv->id]->getPoint();
 
-	fn = A->getNext();  
-	while(fn != f){
-		count++;
-		fv = fn->ccwNeighbor(vid);
-		fn = fn->getFaceVertexId(vid)->getNext();
-		average += vList[fv->id]->getPoint();
-	}
-	
-	assert(count == K);	
-	average /= K;
-	alpha = pow(((.375) + (.25)*cos((TWO_PI/(double)K))), 2.) + .375;
-	
-	value = (alpha*vList[vid]->getPoint()) + ((1. - alpha)*average);
-	
-	
-	return value;
-	
-}
 
 
 ofVec3f Mesh::loopEdgeValue(Face* f, FaceVertex* A, FaceVertex* B, Vertex* v){
-
+ 	FaceVertex* D;
 	FaceVertex* C = f->getOtherVertex(A->id, B->id);
-	FaceVertex* D = (B->getNext())->getOtherVertex(A->id, B->id);
+	
+	if(!B->hasNext()) D = C;
+	else  D = (B->getNext())->getOtherVertex(A->id, B->id);
 
 	ofVec3f va1 = (vList[(A->id)])->getPoint();
 	ofVec3f va2 = (vList[(B->id)])->getPoint();
@@ -481,7 +465,7 @@ Vertex* Mesh::getOrMakeVertex(Face* f, FaceVertex* from, FaceVertex* to){
 		
 		ofVec3f mid = (vList[(from->id)]->getPoint() + vList[(to->id)]->getPoint()) / 2.;
 		Vertex* v = new Vertex(vList.size(), mid.x, mid.y, mid.z );
-		v->setIncidentEdge(6); //any subdivided edge will have 6 incident edges
+		//v->setIncidentEdge(6); //any subdivided edge will have 6 incident edges :: not the case with open meshes
 		vList.push_back(v);
 		twin_vertices.insert(pair<int, int> (v->getId(), v->getId())); //assume that its a base 
 
@@ -594,35 +578,35 @@ void Mesh::connectEdgeFaces(Face* cur, Face* last, int shared, int from, int to)
 }
 
 
-//computes the vertex normal by taking the average of the adjacent face normals
-ofVec3f Mesh::computeVertexNormal(Vertex* v){
+// //computes the vertex normal by taking the average of the adjacent face normals
+// ofVec3f Mesh::computeVertexNormal(Vertex* v){
 
-	//start at one face on the vertex
-	Face* f = v->getFace();
-	int face_count = 0;
+// 	//start at one face on the vertex
+// 	Face* f = v->getFace();
+// 	int face_count = 0;
 
-	//get the face vertex pointing to this vertex
-	FaceVertex* fv = f->getFaceVertexId(v->getId());
-	Face* cur = fv->getNext();
+// 	//get the face vertex pointing to this vertex
+// 	FaceVertex* fv = f->getFaceVertexId(v->getId());
+// 	Face* cur = fv->getNext();
 
-	ofVec3f sum;
-	sum.set(f->getFaceNormal());
-	face_count++;
+// 	ofVec3f sum;
+// 	sum.set(f->getFaceNormal());
+// 	face_count++;
 
-	//add the additional points
-	while(cur != f){
-		face_count++;
-		sum += cur->getFaceNormal();
-		fv = cur->getFaceVertexId(v->getId());
-		cur = fv->getNext();
-	}
+// 	//add the additional points
+// 	while(cur != f){
+// 		face_count++;
+// 		sum += cur->getFaceNormal();
+// 		fv = cur->getFaceVertexId(v->getId());
+// 		cur = fv->getNext();
+// 	}
 
-	sum /= v->getIncident();
-	assert(v->getIncident() == face_count);
+// 	sum /= v->getIncident();
+// 	assert(v->getIncident() == face_count);
 
-	return sum.normalize();
+// 	return sum.normalize();
 
-}
+// }
 	
 
 ofVec3f Mesh::computeFaceNormal(Face* f){

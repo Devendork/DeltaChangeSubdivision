@@ -34,6 +34,9 @@ public:
 	ofVec3f  getComponentX();
 	ofVec3f  getComponentY();
 	void setComponents();
+	void incrementIncident();
+	void addComponentNormal(ofVec3f);
+	void makeNormalAverage();
 
 
 	

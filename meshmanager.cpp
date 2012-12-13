@@ -41,8 +41,8 @@ Mesh* MeshManager::loadMesh(){
 	
 	vector<Face*> faces;
 	//the faces are always going to be one index higher when they are first entered
-	faces.push_back(new Face(0, 0, 2, 3));
-	faces.push_back(new Face(1, 1, 2, 0));
+	//faces.push_back(new Face(0, 0, 2, 3));
+	//faces.push_back(new Face(1, 1, 2, 0));
 	faces.push_back(new Face(2, 3, 7, 0));
 	faces.push_back(new Face(3, 0, 7, 4));
 	faces.push_back(new Face(4, 3, 6, 7));

@@ -38,7 +38,6 @@ public:
 	Mesh(int, vector<Vertex*>, vector<Face*>);
 	Mesh(int s, vector<Vertex*> v, vector<Face*> f,vector<Delta*> changes);
 	Mesh(int, Mesh* old, vector<Delta*> changes);
-//	Mesh(const Mesh& m);
 	map<int, Face*> getFaces();
 	vector<Vertex*> getVList();
 	void subdivide();
@@ -48,12 +47,9 @@ public:
 	int  getVertexOnEdgeId(int , int );
 	void connectEdgeFaces(Face* , Face* , int , int , int );
 	Vertex* getOrMakeVertex(Face*, FaceVertex* , FaceVertex* );
-	void updateIncidentEdgeData();
+	void udpateMeshData();
 	ofVec3f loopEdgeValue(Face* f, FaceVertex* A, FaceVertex* B, Vertex* v);
-	ofVec3f loopVertexValue(Face* f, FaceVertex* A);
 	ofVec3f computeFaceNormal(Face* f);
-	ofVec3f computeVertexNormal(Vertex* );
-	void updateNormals();
 	void addModifications(vector<Delta*> changes);
 	void resetVariables();
 	ofVec3f getBoxMin();
@@ -61,7 +57,6 @@ public:
 	double getBoxSize();
 	void updateMins(ofVec3f& m, ofVec3f c);
 	void updateMaxs(ofVec3f& m, ofVec3f c);
-	void setFacePointers();
 	void applyScaling(ofVec3f);
 	void mirrorMesh(vector<int>);
 	void constructTopology();
@@ -69,6 +64,7 @@ public:
 	void insertTwin(int from, int to);
 	void addFamily(int child, int p1, int p2);
 	void linkChildren();
+	void updateMeshData();
 
 
 private:
@@ -83,7 +79,6 @@ private:
 	ofVec3f box_min;
 	ofVec3f box_max;
 	map<int, int> twin_vertices; //<a map from the orignial vertex to it's mirror vertex >>
-	//map<int, std::set<int>> families; //this links vertices on subdivided edges to their parents to make symmetry reltaions
 	map< int, map <int, int> > lineage;
 
 };
